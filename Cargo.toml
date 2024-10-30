@@ -1,0 +1,79 @@
+[package]
+name = "mira-game"
+version = "0.0.1"
+edition = "2021"
+
+[[bin]]
+name = "mira-game"
+path = "src/main.rs"
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[dependencies]
+# Bevy dependencies
+bevy_third_person_camera = {version = "0.1.14"} # handle palyer camera
+bevy_rapier3d = {version = "0.27.0", features = ["simd-stable"]} # Collision detection
+bevy_kira_audio = {version = "0.20.0", features = ["mp3", "wav", "flac", "ogg", "settings_loader"]} # 3D Audio interface
+bevy_atmosphere = {version = "0.10.0", features = ["all_models"]} # includes sky boxes and camera light
+rapier3d = {version = "0.22.0", features = ["simd-stable"]} # collision detection.
+bevy_xpbd_3d = {version = "0.5.0"}
+bevy-inspector-egui = {version = "0.27.0"} # ui for handle internal bevy things.
+
+# Third Party tools
+rand = {version = "0.8.5"} # random generator from rust
+rodio = {version = "0.19.0", features = ["vorbis", "flac", "wav", "mp3"]} # kira support for audio files
+toml = {version = "0.8.19"} # read and write toml configuration
+serde = {version = "1.0.210", features = ["derive"]}
+
+[dependencies.bevy]
+version = "0.14.2"
+default-features = false
+features = [
+    # Bevy Logic
+    "multi_threaded", # allow multi threading for games
+    "bevy_asset", # enable assets loading
+    "bevy_scene", # scene building from blender
+    "bevy_winit", # window initialisation
+    "bevy_render", # render for vulkan, DX12 and DXVK
+    "bevy_core_pipeline", # core shader pipelines
+    "bevy_pbr", # 3D model support
+    "bevy_gltf", # .glb / gltf fromat support (best compromisation)
+    "bevy_text", # suppport fonts and text rendering
+    "bevy_ui", # default bevy ui elements like button and text
+    "bevy_color", # shared color types support
+    "sysinfo_plugin", # enable system information plugin
+    "tonemapping_luts", # blooming and other effects
+    "default_font", # system default font support
+    "animation", # animation for 3D models
+    "asset_processor", # asset server (extension for bevy_asset)
+    "subpixel_glyph_atlas", # glyph decoder
+    "serialize", # data serializer and deserializer
+    "bevy_state", # bevy internal state system for handle game states.
+    "bevy_gilrs", # gamepad support
+    "bevy_gizmos", # generate hitboxes outlines
+
+    # File formats
+    "png", # support for PNG
+    "jpeg", # support for JPEG / JPG
+    "zstd", # ktx2 super compression suppport
+
+    # Platform support
+    "x11", # support for older linux systems with x11 server
+    "webgl2", # support for web
+    "wayland", # support for newer linux systems
+    "accesskit_unix", # support for any other unix based distros
+    "bevy_dynamic_plugin", # dynamic support for handle systems without rust installed
+
+    # Development Debugger features
+    "bevy_dev_tools", # developer tools
+    "bevy_debug_stepping", # allow debug setpping
+
+    # Hot reload
+    #"embedded_watcher", # watcher for assets load at memory
+    #"file_watcher", # hot reload files
+
+]
