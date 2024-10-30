@@ -39,7 +39,7 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build Project
-        run: cargo build --dev
+        run: cargo build --release
 
       - name: Test Project
         run: cargo test --all
