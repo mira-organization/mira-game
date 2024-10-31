@@ -41,5 +41,11 @@ jobs:
       - name: Build Project
         run: cargo build --release
 
-      - name: Test Project
-        run: cargo test --all
+      - name: Run Tests with Coverage
+        run: cargo tarpaulin --out Xml
+
+      - name: Upload Coverage Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
