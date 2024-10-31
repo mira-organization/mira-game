@@ -1,8 +1,14 @@
+mod manager;
+mod entities;
+mod environment;
+mod logic;
+
 use bevy::prelude::*;
 use bevy::window::{WindowPlugin, Window, WindowResolution};
 use bevy::render::settings::{WgpuSettings, Backends, WgpuFeatures, RenderCreation};
 use bevy::app::AppExit;
 use bevy::render::RenderPlugin;
+use crate::manager::ManagerPlugin;
 
 fn main() -> AppExit {
     let mut app = App::new();
@@ -25,7 +31,7 @@ fn initialize_app(app: &mut App) -> &mut App {
                 render_creation: RenderCreation::Automatic(create_gpu_settings()),
                 ..default()
             }
-        ))
+        )).add_plugins(ManagerPlugin)
 }
 
 fn create_gpu_settings() -> WgpuSettings {
