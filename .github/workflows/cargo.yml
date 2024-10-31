@@ -39,14 +39,22 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
+      - name: Cache Cargo Test Build
+        uses: actions/cache@v4
+        with:
+          path: target/debug
+          key: ${{ runner.os }}-cargo-test-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-test-build-
+
       - name: Build Project
         run: cargo build --release
 
       - name: Run Tests with Coverage
-        run: cargo tarpaulin --out Html
+        run: cargo tarpaulin --out Html --output-dir ./tarpaulin-report
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: tarpaulin-report/*
+          path: tarpaulin-report/*.html
