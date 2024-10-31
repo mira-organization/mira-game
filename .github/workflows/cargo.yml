@@ -21,6 +21,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+          cargo install cargo-tarpaulin
 
       - name: Cache Cargo Registry
         uses: actions/cache@v4
@@ -42,10 +43,10 @@ jobs:
         run: cargo build --release
 
       - name: Run Tests with Coverage
-        run: cargo tarpaulin --out Xml
+        run: cargo tarpaulin --out Html
 
       - name: Upload Coverage Report
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
-          path: coverage.xml
+          path: coverage.html
