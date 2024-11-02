@@ -80,6 +80,9 @@ jobs:
       - name: Add Rust Target for GNU
         run: rustup target add x86_64-pc-windows-gnu
 
+      - name: Build Release
+        run: cargo build --release
+
       - name: Package GNU release
         run: |
           zip -j windows_gnu_release.zip target/release/mira-game.exe ./assets/*
