@@ -63,6 +63,11 @@ jobs:
           profile: minimal
           override: true
 
+      - name: Install System Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+
       - name: Build Pre-Release
         run: cargo build --release
 
