@@ -10,8 +10,6 @@ jobs:
   # This runs every time you push.
   build:
     runs-on: ubuntu-latest
-    outputs:
-      build_output: ${{ github.workspace }}/target
 
     steps:
       - name: Checkout Repo
@@ -46,8 +44,13 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build Project
-        id: build
         run: cargo build --release
+
+      - name: Upload Target Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: target-dir
+          path: target
 
   # This runs after build and triggered the #[cfg(test)] function in code. (Unit Test)
   test:
@@ -78,10 +81,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
+      - name: Download Target Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: target-dir
+
+      - name: Set Environment Target
+        run: echo "CARGO_TARGET_DIR=$(pwd)/target" >> $GITHUB_ENV
+
       - name: Run Unit Tests
-        env:
-          CARGO_BUILD_TARGET_DIR: ${{ needs.build.outputs.build_output }}
-        run: cargo test --release
+        run: cargo test
 
   # This runs only if you contain "-build-test-release" in your push commit
   pre-release:
