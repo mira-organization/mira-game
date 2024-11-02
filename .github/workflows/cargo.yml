@@ -82,7 +82,7 @@ jobs:
 
       - name: Package GNU release
         run: |
-          zip -j windows_gnu_release.zip target/x86_64-pc-windows-gnu/release/mira-game.exe ./assets/*
+          zip -j windows_gnu_release.zip target/release/mira-game.exe ./assets/*
           
       - name: Upload Windows GNU Release
         uses: actions/upload-release-asset@v1
