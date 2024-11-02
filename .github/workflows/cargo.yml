@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      build_output: ${{ steps.build_output.outputs.build_artifact }}
+      build_output: ${{ steps.build.outputs.target-path }}
 
     steps:
       - name: Checkout Repo
@@ -46,7 +46,7 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build Project
-        id: build_output
+        id: build
         run: cargo build --release
 
   # This runs after build and triggered the #[cfg(test)] function in code. (Unit Test)
@@ -78,15 +78,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-registry-
 
-      - name: Cache Cargo Test Build
-        uses: actions/cache@v4
-        with:
-          path: target/debug
-          key: ${{ runner.os }}-cargo-test-build-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-test-build-
-
       - name: Run Unit Tests
+        env:
+          CARGO_TARGET_DIR: ${{ needs.build.outputs.build_output }}
         run: cargo test
 
   # This runs only if you contain "-build-test-release" in your push commit
