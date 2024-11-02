@@ -8,10 +8,8 @@ on:
 
 jobs:
   # This runs every time you push.
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
-    outputs:
-      build_output: ${{ github.workspace }}/target
 
     steps:
       - name: Checkout Repo
@@ -46,13 +44,13 @@ jobs:
             ${{ runner.os }}-cargo-build-
 
       - name: Build Project
-        id: build
-        run: cargo build --release
+        run: cargo test --release
 
-  # This runs after build and triggered the #[cfg(test)] function in code. (Unit Test)
-  test:
+  # This runs only if you contain "-build-test-release" in your push commit
+  pre-release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: build-and-test
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
 
     steps:
       - name: Checkout Repo
@@ -69,36 +67,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
-
-      - name: Cache Cargo Registry
-        uses: actions/cache@v4
-        with:
-          path: ~/.cargo/registry
-          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-registry-
-
-      - name: Run Unit Tests
-        env:
-          CARGO_TARGET_DIR: ${{ needs.build.outputs.build_output }}
-        run: cargo test
-
-  # This runs only if you contain "-build-test-release" in your push commit
-  pre-release:
-    runs-on: ubuntu-latest
-    needs: [ build, test ]
-    if: github.event.pull_request.head.ref == 'develop' && contains(github.event.head_commit.message, '-build-test-release')
-
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
 
       - name: Build Pre-Release
         run: cargo build --release
