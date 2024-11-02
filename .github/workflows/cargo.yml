@@ -81,7 +81,7 @@ jobs:
       - name: Run Unit Tests
         env:
           CARGO_TARGET_DIR: ${{ needs.build.outputs.build_output }}
-        run: cargo test
+        run: cargo test --release
 
   # This runs only if you contain "-build-test-release" in your push commit
   pre-release:
