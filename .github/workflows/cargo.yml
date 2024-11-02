@@ -11,7 +11,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     outputs:
-      build_output: ${{ steps.build.outputs.target-path }}
+      build_output: ${{ github.workspace }}/target
 
     steps:
       - name: Checkout Repo
