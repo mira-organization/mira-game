@@ -68,14 +68,12 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
-      - name: Publish to GitHub Packages
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo publish --allow-dirty
+      - name: Build Pre-Release
+        run: cargo build --release
 
       - name: Create Pre-Release on GitHub
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_NAME="v0.0.1-$(date +'%Y%m%d%H%M%S')"
           curl -X POST \
