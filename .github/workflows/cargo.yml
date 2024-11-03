@@ -47,15 +47,11 @@ jobs:
         run: cargo test --release
 
   # This runs only if you contain "-build-test-release" in your push commit
-  build:
-    name: Build and Release for Windows, Mac, and Linux
+  build-linux:
+    name: Build for Linux
     needs: build-and-test
-
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
-    strategy:
-      matrix:
-        target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-gnu]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -65,50 +61,108 @@ jobs:
         with:
           toolchain: stable
           profile: minimal
-          override: true
 
-      - name: Install dependencies for Linux build
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
+      - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
+          sudo apt-get install -y pkg-config libssl-dev libasound2-dev libudev-dev
 
-      - name: Install dependencies for Windows build
-        if: matrix.target == 'x86_64-pc-windows-gnu'
-        run: rustup target add x86_64-pc-windows-gnu
-
-      - name: Install dependencies for macOS build
-        if: matrix.target == 'x86_64-apple-darwin'
-        run: rustup target add x86_64-apple-darwin
-
-      - name: Build for ${{ matrix.target }}
-        run: cargo build --release --target ${{ matrix.target }}
+      - name: Build Linux Release
+        run: cargo build --release --target x86_64-unknown-linux-gnu
 
       - name: Package build
         run: |
           mkdir -p release
-          zip -j release/${{ matrix.target }}_release.zip target/${{ matrix.target }}/release/mira-game*
+          zip -j release/linux_release.zip target/x86_64-unknown-linux-gnu/release/mira-game*
 
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}_release
-          path: release/${{ matrix.target }}_release.zip
+          name: linux_release
+          path: release/linux_release.zip
+
+  build-windows:
+    name: Build for Windows
+    needs: [build-and-test, build-linux]
+    runs-on: windows-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Add Windows Target
+        run: rustup target add x86_64-pc-windows-gnu
+
+      - name: Build Windows Release
+        run: cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Package build
+        run: |
+          mkdir -p release
+          Compress-Archive -Path target\x86_64-pc-windows-gnu\release\mira-game.exe -DestinationPath release\windows_release.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows_release
+          path: release/windows_release.zip
+
+  build-macos:
+    name: Build for macOS
+    needs: [build-and-test, build-linux, build-windows]
+    runs-on: macos-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Build macOS Release
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Package build
+        run: |
+          mkdir -p release
+          zip -j release/macos_release.zip target/x86_64-apple-darwin/release/mira-game*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos_release
+          path: release/macos_release.zip
 
   release:
     name: Create GitHub Release
-    needs: [build, build-and-test]
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    needs: [build-and-test, build-linux, build-windows, build-macos]
     steps:
-      - name: Download build artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          name: ${{ matrix.target }}_release
-          path: ./release
+          name: linux_release
+          path: ./release/linux
+        uses: actions/download-artifact@v4
+        with:
+          name: windows_release
+          path: ./release/windows
+        uses: actions/download-artifact@v4
+        with:
+          name: macos_release
+          path: ./release/macos
 
       - name: Create GitHub Release
-        id: create_release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -124,8 +178,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for file in ./release/*; do
-            FILENAME=$(basename "$file")
-            curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/zip" \
-              --data-binary @"$file" "$UPLOAD_URL?name=$FILENAME"
+          for dir in linux windows macos; do
+            for file in ./release/$dir/*; do
+              FILENAME=$(basename "$file")
+              curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/zip" \
+                --data-binary @"$file" "$UPLOAD_URL?name=$FILENAME"
+            done
           done
