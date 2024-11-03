@@ -47,9 +47,41 @@ jobs:
         run: cargo test --release
 
   # This runs only if you contain "-build-test-release" in your push commit
+  build-macos:
+    name: Build for macOS
+    needs: [ build-and-test ]
+    runs-on: macos-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Install macOS Target for Rust
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Build macOS Release
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Package build
+        run: |
+          mkdir -p release
+          zip -j release/macos_release.zip target/x86_64-apple-darwin/release/mira-game*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos_release
+          path: release/macos_release.zip
+
   build-linux:
     name: Build for Linux
-    needs: build-and-test
+    needs: [build-and-test, build-macos]
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     steps:
@@ -83,7 +115,7 @@ jobs:
 
   build-windows:
     name: Build for Windows
-    needs: [build-and-test, build-linux]
+    needs: [build-and-test, build-linux, build-macos]
     runs-on: windows-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     steps:
@@ -112,35 +144,6 @@ jobs:
         with:
           name: windows_release
           path: release/windows_release.zip
-
-  build-macos:
-    name: Build for macOS
-    needs: [build-and-test, build-linux, build-windows]
-    runs-on: macos-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-
-      - name: Build macOS Release
-        run: cargo build --release --target x86_64-apple-darwin
-
-      - name: Package build
-        run: |
-          mkdir -p release
-          zip -j release/macos_release.zip target/x86_64-apple-darwin/release/mira-game*
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos_release
-          path: release/macos_release.zip
 
   release:
     name: Create GitHub Release
