@@ -176,11 +176,11 @@ jobs:
 
       - name: Get version from Cargo.toml
         id: cargo_version
-        run: echo "VERSION=$(grep '^version =' Cargo.toml | sed -E 's/version = \"([^\"]+)\"/v\1/')" >> $GITHUB_ENV
+        run: echo "VERSION=$(grep '^version =' Cargo.toml | sed -E 's/version = \"([^\"]+)\"/\1/')" >> $GITHUB_ENV
 
       - name: Get current date
         id: date
-        run: echo "TAG_NAME=mira-game-${{ env.VERSION }}-$(date +'%d-%m-%Y-%H-%M')" >> $GITHUB_ENV
+        run: echo "TAG_NAME=mira-game-v${{ env.VERSION }}-$(date +'%d-%m-%Y-%H-%M')" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         id: create_release
@@ -189,7 +189,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: "${{ env.TAG_NAME }}"
-          release_name: "Mira Game Pre-Release ${{ env.VERSION }}"
+          release_name: "Mira Game Pre-Release v${{ env.VERSION }}"
           draft: false
           prerelease: true
 
