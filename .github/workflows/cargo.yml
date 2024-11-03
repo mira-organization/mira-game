@@ -2,15 +2,17 @@ name: Main Pipeline
 
 on:
   push:
+    branches:
+      - develop               # Release-Job wird ausgeführt, wenn auf develop gepusht wird (inkl. Merge von PRs)
   pull_request:
     branches:
-      - develop
+      - develop               # Build-and-Test wird für PRs zu develop ausgeführt
 
 jobs:
-  # This runs every time you push.
+  # Dieser Job wird bei jedem Push zu develop und bei jedem Pull Request ausgeführt
   build-and-test:
     runs-on: ubuntu-latest
-
+    if: github.event_name == 'pull_request' # Nur für Pull Requests
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -46,12 +48,11 @@ jobs:
       - name: Build Project
         run: cargo test --release
 
-  # This runs only if you contain "-build-test-release" in your push commit
   build-macos:
     name: Build for macOS
-    needs: [ build-and-test ]
+    needs: [build-and-test]
     runs-on: macos-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -81,9 +82,9 @@ jobs:
 
   build-linux:
     name: Build for Linux
-    needs: [build-and-test, build-macos]
+    needs: [build-and-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -115,9 +116,9 @@ jobs:
 
   build-windows:
     name: Build for Windows
-    needs: [build-and-test, build-linux, build-macos]
+    needs: [build-and-test]
     runs-on: windows-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -148,8 +149,8 @@ jobs:
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
-    needs: [build-and-test, build-linux, build-windows, build-macos]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
+    needs: [build-linux, build-windows, build-macos]
     steps:
       - name: Download Linux Release Artifact
         uses: actions/download-artifact@v4
