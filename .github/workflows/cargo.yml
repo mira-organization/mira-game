@@ -148,15 +148,19 @@ jobs:
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     needs: [build-and-test, build-linux, build-windows, build-macos]
     steps:
-      - name: Download artifacts
+      - name: Download Linux Release Artifact
         uses: actions/download-artifact@v4
         with:
           name: linux_release
           path: ./release/linux
+
+      - name: Download Windows Release Artifact
         uses: actions/download-artifact@v4
         with:
           name: windows_release
           path: ./release/windows
+
+      - name: Download macOS Release Artifact
         uses: actions/download-artifact@v4
         with:
           name: macos_release
