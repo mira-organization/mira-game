@@ -146,7 +146,7 @@ jobs:
           path: release/windows_release.zip
 
   release:
-    name: Create GitHub Release
+    name: GitHub Release
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     needs: [build-and-test, build-linux, build-windows, build-macos]
@@ -170,25 +170,42 @@ jobs:
           path: ./release/macos
 
       - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="v0.1.0-$(date +'%Y%m%d%H%M%S')"
-          response=$(curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/releases \
-            -d "{\"tag_name\": \"$TAG_NAME\", \"name\": \"Release $TAG_NAME\", \"draft\": false, \"prerelease\": false}")
-          echo "$response"
-          UPLOAD_URL=$(echo "$response" | jq -r .upload_url | sed -e "s/{?name,label}//")
-          echo "UPLOAD_URL=$UPLOAD_URL" >> $GITHUB_ENV
+        with:
+          tag_name: "v0.0.1-$(date +'%Y%m%d%H%M%S')"  # dynamischer Tag-Name
+          release_name: "Pre-Release v0.0.1"
+          draft: false
+          prerelease: true
 
-      - name: Upload Release Assets
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          for dir in linux windows macos; do
-            for file in ./release/$dir/*; do
-              FILENAME=$(basename "$file")
-              curl -s -X POST -H "Authorization: token $GITHUB_TOKEN" -H "Content-Type: application/zip" \
-                --data-binary @"$file" "$UPLOAD_URL?name=$FILENAME"
-            done
-          done
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/linux/linux_release.zip
+          asset_name: mira-game-linux.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/windows/windows_release.zip
+          asset_name: mira-game-windows.zip
+          asset_content_type: application/zip
+
+      - name: Upload macOS Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/macos/macos_release.zip
+          asset_name: mira-game-macos.zip
+          asset_content_type: application/zip
