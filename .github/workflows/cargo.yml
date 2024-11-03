@@ -49,7 +49,10 @@ jobs:
   # This runs only if you contain "-build-test-release" in your push commit
   build:
     name: Build and Release for Windows, Mac, and Linux
+    needs: build-and-test
+
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     strategy:
       matrix:
         target: [x86_64-unknown-linux-gnu, x86_64-apple-darwin, x86_64-pc-windows-gnu]
@@ -66,7 +69,9 @@ jobs:
 
       - name: Install dependencies for Linux build
         if: matrix.target == 'x86_64-unknown-linux-gnu'
-        run: sudo apt-get update && sudo apt-get install -y pkg-config libssl-dev libasound2-dev libudev-dev
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
       - name: Install dependencies for Windows build
         if: matrix.target == 'x86_64-pc-windows-gnu'
@@ -92,9 +97,9 @@ jobs:
 
   release:
     name: Create GitHub Release
-    needs: build
+    needs: [build, build-and-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
     steps:
       - name: Download build artifacts
         uses: actions/download-artifact@v4
