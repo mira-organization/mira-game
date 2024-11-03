@@ -150,6 +150,8 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     needs: [build-linux, build-windows, build-macos]
+    permissions:
+      contents: write
     steps:
       - name: Download Linux Release Artifact
         uses: actions/download-artifact@v4
