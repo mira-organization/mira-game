@@ -176,7 +176,9 @@ jobs:
 
       - name: Get version from Cargo.toml
         id: cargo_version
-        run: echo "VERSION=$(grep '^version =' Cargo.toml | sed -E 's/version = \"([^\"]+)\"/\1/')" >> $GITHUB_ENV
+        run: | 
+          VERSION=$(awk '/\[package\]/ {flag=1} /version =/ && flag {print $3; exit}' Cargo.toml | sed -E 's/"([^"]+)"/\1/')
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
 
       - name: Get current date
         id: date
