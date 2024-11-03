@@ -2,15 +2,17 @@ name: Main Pipeline
 
 on:
   push:
+    branches:
+      - develop               # Release-Job wird ausgeführt, wenn auf develop gepusht wird (inkl. Merge von PRs)
   pull_request:
     branches:
-      - develop
+      - develop               # Build-and-Test wird für PRs zu develop ausgeführt
 
 jobs:
-  # This runs every time you push.
+  # Dieser Job wird bei jedem Push zu develop und bei jedem Pull Request ausgeführt
   build-and-test:
     runs-on: ubuntu-latest
-
+    if: github.event_name == 'pull_request' # Nur für Pull Requests
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -46,38 +48,165 @@ jobs:
       - name: Build Project
         run: cargo test --release
 
-  # This runs only if you contain "-build-test-release" in your push commit
-  pre-release:
-    runs-on: ubuntu-latest
-    needs: build-and-test
-    if: github.event_name == 'pull_request' && github.base_ref == 'develop' && contains(github.event.pull_request.title, '-build-test-release')
-
+  build-macos:
+    name: Build for macOS
+    needs: [build-and-test]
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Set up Rust
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable
           profile: minimal
-          override: true
 
-      - name: Install System Dependencies
+      - name: Install macOS Target for Rust
+        run: rustup target add x86_64-apple-darwin
+
+      - name: Build macOS Release
+        run: cargo build --release --target x86_64-apple-darwin
+
+      - name: Package build
+        run: |
+          mkdir -p release
+          zip -j release/macos_release.zip target/x86_64-apple-darwin/release/mira-game*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos_release
+          path: release/macos_release.zip
+
+  build-linux:
+    name: Build for Linux
+    needs: [build-and-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
 
-      - name: Build Pre-Release
-        run: cargo build --release
+      - name: Build Linux Release
+        run: cargo build --release --target x86_64-unknown-linux-gnu
 
-      - name: Create Pre-Release on GitHub
+      - name: Package build
+        run: |
+          mkdir -p release
+          zip -j release/linux_release.zip target/x86_64-unknown-linux-gnu/release/mira-game*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux_release
+          path: release/linux_release.zip
+
+  build-windows:
+    name: Build for Windows
+    needs: [build-and-test]
+    runs-on: windows-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+
+      - name: Add Windows Target
+        run: rustup target add x86_64-pc-windows-gnu
+
+      - name: Build Windows Release
+        run: cargo build --release --target x86_64-pc-windows-gnu
+
+      - name: Package build
+        run: |
+          mkdir -p release
+          Compress-Archive -Path target\x86_64-pc-windows-gnu\release\mira-game.exe -DestinationPath release\windows_release.zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows_release
+          path: release/windows_release.zip
+
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'  # Trigger nur bei Push auf develop
+    needs: [build-linux, build-windows, build-macos]
+    steps:
+      - name: Download Linux Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux_release
+          path: ./release/linux
+
+      - name: Download Windows Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: windows_release
+          path: ./release/windows
+
+      - name: Download macOS Release Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos_release
+          path: ./release/macos
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          TAG_NAME="v0.0.1-$(date +'%Y%m%d%H%M%S')"
-          curl -X POST \
-            -H "Authorization: token $GITHUB_TOKEN" \
-            -H "Accept: application/vnd.github.v3+json" \
-            https://api.github.com/repos/${{ github.repository }}/releases \
-            -d "{\"tag_name\": \"$TAG_NAME\", \"name\": \"Pre-Release $TAG_NAME\", \"draft\": false, \"prerelease\": true}"
+        with:
+          tag_name: "v0.0.1-$(date +'%Y%m%d%H%M%S')"  # dynamischer Tag-Name
+          release_name: "Pre-Release v0.0.1"
+          draft: false
+          prerelease: true
+
+      - name: Upload Linux Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/linux/linux_release.zip
+          asset_name: mira-game-linux.zip
+          asset_content_type: application/zip
+
+      - name: Upload Windows Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/windows/windows_release.zip
+          asset_name: mira-game-windows.zip
+          asset_content_type: application/zip
+
+      - name: Upload macOS Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./release/macos/macos_release.zip
+          asset_name: mira-game-macos.zip
+          asset_content_type: application/zip
