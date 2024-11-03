@@ -87,18 +87,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Download Linux Release Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux_release
-          path: ./release/linux
-
-      - name: Download Windows Release Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: windows_release
-          path: ./release/windows
-
       - name: Download macOS Release Artifact
         uses: actions/download-artifact@v4
         with:
@@ -119,26 +107,6 @@ jobs:
           release_name: "Pre-Release v0.0.1"
           draft: false
           prerelease: true
-
-      - name: Upload Linux Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/linux/linux_release.zip
-          asset_name: mira-game-linux.zip
-          asset_content_type: application/zip
-
-      - name: Upload Windows Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./release/windows/windows_release.zip
-          asset_name: mira-game-windows.zip
-          asset_content_type: application/zip
 
       - name: Upload macOS Release Asset
         uses: actions/upload-release-asset@v1
