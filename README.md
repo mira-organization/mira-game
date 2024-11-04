@@ -1,3 +1,4 @@
+[![Main Pipeline](https://github.com/mira-organization/mira-game/actions/workflows/cargo.yml/badge.svg?branch=develop)](https://github.com/mira-organization/mira-game/actions/workflows/cargo.yml)
 
 # Mira Game Development
 
@@ -23,7 +24,7 @@ Vscode, you need to find plugin which like the Jetbrains plugins.
 
 If you work on the project you push your code to a separate branch like **feature/issue-33-player-animations**. <br>
 We don't push directly on develop, staging or main. The CI will check your code and build them. If the <br>
-CI actions was failed your commit (Pull Request) will bot be merged. At the following we talk about our branches.
+CI actions was failed your commit (Pull Request) will not be merged. At the following we talk about our branches.
 
 ### Develop (default)
 
