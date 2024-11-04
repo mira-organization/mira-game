@@ -44,4 +44,57 @@ merge from the staging branch at main branch to trigger a release build. Note on
 
 ---
 
+## IDEA (Jetbrains) Setup
+
+---
+
 ## Code syntax
+
+Here we describe how to code with bevy and rust. We will talk about code structure and in code documentation. <br>
+The code structure is very important: <br>
+mod.rs files only describe models (struct) or enums. The mod will handle like a main file. <br>
+Here is an example:
+````rust
+use bevy::prelude::*;
+
+pub struct Model {
+    is_nice: bool,
+}
+
+pub enum Enum {
+    Entry
+}
+
+pub struct ExamplePlugin;
+
+impl Plugin for ExamplePlugin {
+    fn build(&self, app: &mut App) {
+        // app can be used if the main function at main.rs was called!
+    }
+}
+````
+
+Note that this code is only an example but our structure shows like this.
+
+### Unit Tests \ In Code Documentation
+
+We use the rust unit tests. All .rs files needed ``#[cfg(test)]`` as functions for handle unit tests.
+here is an example of the main unit test:
+
+````rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// This is an in code document and will show at hover over the function
+    /// put here examples.
+    #[test]
+    fn test_app_uses_vulkan_backend() {
+        let settings = create_gpu_settings();
+
+        assert_eq!(settings.backends, Some(Backends::VULKAN));
+        assert!(settings.features.contains(WgpuFeatures::POLYGON_MODE_LINE));
+    }
+}
+````
+
