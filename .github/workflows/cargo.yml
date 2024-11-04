@@ -2,16 +2,14 @@ name: Main Pipeline
 
 on:
   push:
-    branches:
-      - develop
   pull_request:
     branches:
-      - develop
+      - staging
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '--skip-check')
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -51,7 +49,7 @@ jobs:
     name: Build for macOS
     needs: [build-and-test]
     runs-on: macos-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'pull_request' && github.base_ref == 'staging' && github.head_ref == 'develop'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -83,7 +81,7 @@ jobs:
     name: Build for Linux
     needs: [build-and-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'pull_request' && github.base_ref == 'staging' && github.head_ref == 'develop'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -117,7 +115,7 @@ jobs:
     name: Build for Windows
     needs: [build-and-test]
     runs-on: windows-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'pull_request' && github.base_ref == 'staging' && github.head_ref == 'develop'
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -148,7 +146,7 @@ jobs:
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    if: github.event_name == 'pull_request' && github.base_ref == 'staging' && github.head_ref == 'develop'
     needs: [build-linux, build-windows, build-macos]
     permissions:
       contents: write
@@ -176,7 +174,7 @@ jobs:
 
       - name: Get version from Cargo.toml
         id: cargo_version
-        run: | 
+        run: |
           VERSION=$(awk '/\[package\]/ {flag=1} /version =/ && flag {print $3; exit}' Cargo.toml | sed -E 's/"([^"]+)"/\1/')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
