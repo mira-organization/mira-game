@@ -2,9 +2,6 @@ name: Main Pipeline
 
 on:
   push:
-  pull_request:
-    branches:
-      - staging
 
 jobs:
   build-and-test:
