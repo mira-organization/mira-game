@@ -46,6 +46,18 @@ merge from the staging branch at main branch to trigger a release build. Note on
 
 ## IDEA (Jetbrains) Setup
 
+We use RustRover for the Project and recommended this as default IDEA. First we clone the rust project <b>
+``git@github.com:mira-organization/mira-game.git`` this shows like: <br>
+![Git Version Clone](/docs/IDEA_VERSION_CONTROL.png)
+
+After cloning, you will become a popup window which ask for Trust. **Trust**.
+Now your IDEA looks like this:
+![IDEA Main](/docs/IDEA_MAIN.png)
+
+Now you need to start the program. You can do that when you click the Play button. If their no Play button <br>
+go to main.rs which storage in ``src/main.rs`` and click in the ``fn main() -> AppExit {}`` function the Play button. <br>
+Is no Play button visible it is currently at build state look at build (Cargo)
+
 ---
 
 ## Code syntax
