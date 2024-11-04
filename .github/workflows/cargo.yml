@@ -1,15 +1,11 @@
 name: Main Pipeline
 
-on:
-  push:
-  pull_request:
-    branches:
-      - staging
+on: push
 
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && !contains(github.event.head_commit.message, '--skip-check')
+    if: ${{ github.event_name == 'push' }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v4
@@ -42,12 +38,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-build-
 
-      - name: Debug GitHub Context
-        run: |
-            echo "Event Name: ${{ github.event_name }}"
-            echo "Base Ref: ${{ github.event.pull_request.base.ref }}"
-            echo "Head Ref: ${{ github.event.pull_request.head.ref }}"
-
       - name: Build Project
         run: cargo test --release
 
@@ -55,7 +45,7 @@ jobs:
     name: Build for macOS
     needs: [build-and-test]
     runs-on: macos-latest
-    if: ${{ github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.ref == 'develop' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -87,7 +77,7 @@ jobs:
     name: Build for Linux
     needs: [build-and-test]
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.ref == 'develop' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -121,7 +111,7 @@ jobs:
     name: Build for Windows
     needs: [build-and-test]
     runs-on: windows-latest
-    if: ${{ github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.ref == 'develop' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -149,10 +139,11 @@ jobs:
           name: windows_release
           path: release/windows_release.zip
 
+
   release:
     name: GitHub Release
     runs-on: ubuntu-latest
-    if: ${{ github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.ref == 'develop' }}
+    if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/staging' }}
     needs: [build-linux, build-windows, build-macos]
     permissions:
       contents: write
