@@ -10,11 +10,15 @@ use bevy::app::AppExit;
 use bevy::render::RenderPlugin;
 use crate::manager::ManagerPlugin;
 
+/// Main function
 fn main() -> AppExit {
     let mut app = App::new();
     initialize_app(&mut app).run()
 }
 
+/// Function initialized the main game loop and set up [`manager`].
+/// All the game logic can be found at [`manager`] or his sub
+/// packages like [`entities`], [`logic`] or [`environment`].
 fn initialize_app(app: &mut App) -> &mut App {
     app
         .add_plugins(DefaultPlugins.set(
@@ -34,6 +38,8 @@ fn initialize_app(app: &mut App) -> &mut App {
         )).add_plugins(ManagerPlugin)
 }
 
+/// Function was out sourced for Unit testing and inclusion for
+/// [`WgpuSettings`].
 fn create_gpu_settings() -> WgpuSettings {
     WgpuSettings {
         features: WgpuFeatures::POLYGON_MODE_LINE,
@@ -46,6 +52,7 @@ fn create_gpu_settings() -> WgpuSettings {
 mod tests {
     use super::*;
 
+    /// Unit Test for check if [`Backends::VULKAN`] enabled.
     #[test]
     fn test_app_uses_vulkan_backend() {
         let settings = create_gpu_settings();
