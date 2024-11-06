@@ -10,6 +10,8 @@ impl Plugin for  EnvironmentBase {
     }
 }
 
+/// Initialize default base [`Plane3d`] for ground detection.
+/// This is deprecated because the chunk system will replace them.
 fn initialize_map(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
     info!("Initializing map");
     commands.spawn((
