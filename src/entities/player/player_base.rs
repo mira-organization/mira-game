@@ -64,14 +64,14 @@ fn load_player_camera(mut commands: Commands) {
         TemporalAntiAliasBundle::default(),
         BloomSettings::default(),
         AtmosphereCamera::default(),
-        FogSettings {
+/*        FogSettings {
             color: Color::srgb(0.25, 0.25, 0.30),
             falloff: FogFalloff::Linear {
                 start: 25.0,
                 end: 50.0,
             },
             ..default()
-        },
+        },*/
     ));
 }
 
