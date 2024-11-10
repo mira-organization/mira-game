@@ -24,7 +24,7 @@ fn load_player_model(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, m
         PbrBundle {
             mesh: meshes.add(Cuboid::from_size(Vec3::splat(1.0))),
             material: materials.add(Color::srgb_u8(200, 0, 0)),
-            transform: Transform::from_xyz(0.0, 0.1, 0.0),
+            transform: Transform::from_xyz(0.0, 2.0, 0.0),
             ..default()
         },
         Player::default(),
@@ -67,8 +67,8 @@ fn load_player_camera(mut commands: Commands) {
         FogSettings {
             color: Color::srgb(0.25, 0.25, 0.30),
             falloff: FogFalloff::Linear {
-                start: 25.0,
-                end: 50.0,
+                start: 325.0,
+                end: 500.0,
             },
             ..default()
         },
@@ -138,8 +138,8 @@ mod tests {
 
         let fog = camera_entity.get::<FogSettings>().unwrap();
         if let FogFalloff::Linear { start, end } = fog.falloff {
-            assert_eq!(start, 25.0);
-            assert_eq!(end, 50.0);
+            assert_eq!(start, 325.0);
+            assert_eq!(end, 500.0);
         } else {
             panic!("Unexpected FogFalloff type");
         }

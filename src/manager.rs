@@ -112,7 +112,7 @@ impl Plugin for ManagerPlugin {
 
 fn plugin_init_rapier3d_debug() -> RapierDebugRenderPlugin {
     RapierDebugRenderPlugin {
-        enabled: false,
+        enabled: true,
         style: DebugRenderStyle {
             collider_parentless_color: [0.0, 1.0, 1.0, 1.0],
             collider_dynamic_color: [305.0, 1.0, 0.5, 1.0],
