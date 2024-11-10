@@ -54,24 +54,28 @@ fn extract_chunks_from_current_areas(asset_server: Res<AssetServer>,
         for (name, handle) in gltf.named_nodes.iter() {
             if name.contains("chunk") {
                 if let Some(node) = node_handle.get(&*handle) {
-                    let x = node.transform.translation.x as i32;
-                    let z = node.transform.translation.z as i32;
+                    for child in node.children.iter() {
+                        if child.name.contains("terrain") {
+                            let x = child.transform.translation.x as i32;
+                            let z = child.transform.translation.z as i32;
 
-                    if !chunk_manager.chunk_entries.contains_key(&(x, z)) {
-                        chunk_manager.chunk_entries.insert((x, z), Chunk {
-                            id: None,
-                            node: handle.clone(),
-                            x,
-                            z,
-                            size: node.transform.scale.x as i32 * 2,
-                            loaded: false,
-                            area: "debug".to_string(),
-                            name: name.to_string(),
-                            player_inbound: false,
-                        });
+                            if !chunk_manager.chunk_entries.contains_key(&(x, z)) {
+                                chunk_manager.chunk_entries.insert((x, z), Chunk {
+                                    id: None,
+                                    node: handle.clone(),
+                                    x,
+                                    z,
+                                    size: child.transform.scale.x as i32 * 2,
+                                    loaded: false,
+                                    area: "debug".to_string(),
+                                    name: name.to_string(),
+                                    player_inbound: false,
+                                });
 
-                        info!("Insert new Chunk - {:?} - {}", name, chunk_manager.chunk_entries.len());
-                        info!("Transform: {:?}", node.transform);
+                                info!("Insert new Chunk - {:?} - {}", name, chunk_manager.chunk_entries.len());
+                                info!("Transform: {:?}", node.transform);
+                            }
+                        }
                     }
                 }
             }
@@ -99,37 +103,43 @@ fn load_chunks(mut commands: Commands,
                 }
 
                 if let Some(node) = node_handle.get(&chunk.node) {
-                    if let Some(mesh_option) = &node.mesh {
-                        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                            if let Some(material) = &mesh.primitives[0].material {
-                                let bevy_mesh = mesh.primitives[0].mesh.clone();
+                    for child in node.children.iter() {
+                        if child.name.contains("terrain") {
+                            if let Some(mesh_option) = &child.mesh {
+                                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+                                    if let Some(material) = &mesh.primitives[0].material {
+                                        let bevy_mesh = mesh.primitives[0].mesh.clone();
 
-                                if let Some(col_mesh) = meshes.get(&bevy_mesh) {
-                                    if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
-                                        let entity_id = commands.spawn((
-                                            PbrBundle {
-                                                mesh: bevy_mesh,
-                                                transform: Transform {
-                                                    translation: node.transform.translation,
-                                                    scale: node.transform.scale,
-                                                    ..default()
-                                                },
-                                                material: material.clone(),
-                                                ..default()
-                                            },
-                                            RigidBody::Fixed,
-                                            collider,
-                                        )).id();
+                                        if let Some(col_mesh) = meshes.get(&bevy_mesh) {
+                                            if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
+                                                let entity_id = commands.spawn((
+                                                    Name::new(chunk.name.clone()),
+                                                    PbrBundle {
+                                                        mesh: bevy_mesh,
+                                                        transform: Transform {
+                                                            translation: child.transform.translation,
+                                                            scale: child.transform.scale,
+                                                            ..default()
+                                                        },
+                                                        material: material.clone(),
+                                                        ..default()
+                                                    },
+                                                    RigidBody::Fixed,
+                                                    collider,
+                                                )).id();
 
-                                        chunk.loaded = true;
-                                        chunk.id = Option::from(entity_id);
-                                        info!("Loaded {:?}", chunk);
+                                                chunk.loaded = true;
+                                                chunk.id = Option::from(entity_id);
+                                                info!("Loaded {:?}", chunk);
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
                 }
+
             }
         }
     }
