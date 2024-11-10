@@ -4,7 +4,7 @@ use bevy::gltf::{GltfMesh, GltfNode};
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::*;
 use crate::entities::player::Player;
-use crate::environment::Chunk;
+use crate::environment::{Chunk};
 
 #[derive(Component, Resource, Debug, Default)]
 pub struct ChunkManager {
@@ -24,7 +24,7 @@ impl Plugin for ChunkHandlerPlugin {
         app.add_systems(Startup,
             load_save_config_area_file);
 
-        app.add_systems(Update, (extract_chunks_from_current_areas, load_chunks).after(load_save_config_area_file));
+        app.add_systems(Update, (extract_chunks_from_current_areas, load_chunks, unload_chunks).after(load_save_config_area_file));
     }
 }
 
@@ -73,7 +73,6 @@ fn extract_chunks_from_current_areas(asset_server: Res<AssetServer>,
                                 });
 
                                 info!("Insert new Chunk - {:?} - {}", name, chunk_manager.chunk_entries.len());
-                                info!("Transform: {:?}", node.transform);
                             }
                         }
                     }
@@ -83,13 +82,14 @@ fn extract_chunks_from_current_areas(asset_server: Res<AssetServer>,
     }
 }
 
-/// Visibility: 3 chunks = rendered, 2 = visibility ready, all others destroy.
+/// Visibility: 3 chunks = rendered, 2 = visibility ready, all others destroy. Todo: make function split.
 fn load_chunks(mut commands: Commands,
                player_query: Query<&Transform, With<Player>>,
                node_handle: Res<Assets<GltfNode>>,
                mesh_handle: Res<Assets<GltfMesh>>,
                meshes: ResMut<Assets<Mesh>>,
                mut chunk_manager: ResMut<ChunkManager>,
+               mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
 ) {
     if let Ok(transform) = player_query.get_single() {
         let visible_chunks = get_visible_chunks(&transform, 512);
@@ -97,7 +97,6 @@ fn load_chunks(mut commands: Commands,
         for chunk_key in visible_chunks.iter() {
             let key = (chunk_key.0, chunk_key.1);
             if let Some(chunk) = chunk_manager.chunk_entries.get_mut(&key) {
-
                 if chunk.loaded {
                     continue;
                 }
@@ -112,25 +111,39 @@ fn load_chunks(mut commands: Commands,
 
                                         if let Some(col_mesh) = meshes.get(&bevy_mesh) {
                                             if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
-                                                let entity_id = commands.spawn((
-                                                    Name::new(chunk.name.clone()),
-                                                    PbrBundle {
-                                                        mesh: bevy_mesh,
-                                                        transform: Transform {
-                                                            translation: child.transform.translation,
-                                                            scale: child.transform.scale,
+                                                if chunk.id.is_none() {
+                                                    let entity_id = commands.spawn((
+                                                        Name::new(chunk.name.clone()),
+                                                        PbrBundle {
+                                                            mesh: bevy_mesh,
+                                                            transform: Transform {
+                                                                translation: child.transform.translation,
+                                                                scale: child.transform.scale,
+                                                                ..default()
+                                                            },
+                                                            visibility: Visibility::Visible,
+                                                            material: material.clone(),
                                                             ..default()
                                                         },
-                                                        material: material.clone(),
-                                                        ..default()
-                                                    },
-                                                    RigidBody::Fixed,
-                                                    collider,
-                                                )).id();
+                                                        RigidBody::Fixed,
+                                                        collider,
+                                                    )).id();
 
-                                                chunk.loaded = true;
-                                                chunk.id = Option::from(entity_id);
-                                                info!("Loaded {:?}", chunk);
+                                                    chunk.id = Option::from(entity_id);
+                                                    chunk.loaded = true;
+                                                    info!("Loaded {:?}", chunk.name);
+                                                } else {
+                                                    if let Some(entity) = chunk.id {
+                                                        if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
+                                                            *visibility = Visibility::Visible;
+                                                            if collider_disable.is_some() {
+                                                                commands.entity(entity).remove::<ColliderDisabled>();
+                                                            }
+                                                        }
+                                                    }
+                                                    chunk.loaded = true;
+                                                    info!("Loaded {:?}", chunk.name);
+                                                }
                                             }
                                         }
                                     }
@@ -139,13 +152,41 @@ fn load_chunks(mut commands: Commands,
                         }
                     }
                 }
-
             }
         }
     }
 }
 
-fn unload_chunks() {}
+fn unload_chunks(mut commands: Commands,
+                 player_query: Query<&Transform, With<Player>>,
+                 mut chunk_manager: ResMut<ChunkManager>,
+                 mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    let unload_distance = 500.0;
+        if let Ok(transform) = player_query.get_single() {
+            let position = transform.translation;
+
+            for chunk in chunk_manager.chunk_entries.values_mut() {
+                let chunk_position = Vec3::new(chunk.x as f32, position.y, chunk.z as f32);
+                let distance_to_chunk = position.distance(chunk_position);
+
+                if distance_to_chunk > unload_distance && chunk.loaded {
+                    if let Some(entity) = chunk.id {
+                        if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
+                            *visibility = Visibility::Hidden;
+                            if collider_disable.is_some() {
+                                commands.entity(entity).insert(ColliderDisabled);
+                            }
+                        }
+                    }
+                    chunk.loaded = false;
+                    info!("Unload {:?}", chunk.name);
+                }
+            }
+
+            //Todo: Destroy system if to far.
+        }
+}
 
 fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)> {
     let mut visible_chunks = Vec::new();

@@ -27,7 +27,10 @@ fn load_player_model(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, m
             transform: Transform::from_xyz(0.0, 2.0, 0.0),
             ..default()
         },
-        Player::default(),
+        Player {
+            speed_sprinting_multiplier: 10.0,
+            ..default()
+        },
         PlayerSkillAbleStats::default(),
         ThirdPersonCameraTarget,
         RigidBody::Dynamic,
