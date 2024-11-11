@@ -106,47 +106,7 @@ fn load_chunks(mut commands: Commands,
                         if child.name.contains("terrain") {
                             if let Some(mesh_option) = &child.mesh {
                                 if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                    if let Some(material) = &mesh.primitives[0].material {
-                                        let bevy_mesh = mesh.primitives[0].mesh.clone();
-
-                                        if let Some(col_mesh) = meshes.get(&bevy_mesh) {
-                                            if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
-                                                if chunk.id.is_none() {
-                                                    let entity_id = commands.spawn((
-                                                        Name::new(chunk.name.clone()),
-                                                        PbrBundle {
-                                                            mesh: bevy_mesh,
-                                                            transform: Transform {
-                                                                translation: child.transform.translation,
-                                                                scale: child.transform.scale,
-                                                                ..default()
-                                                            },
-                                                            visibility: Visibility::Visible,
-                                                            material: material.clone(),
-                                                            ..default()
-                                                        },
-                                                        RigidBody::Fixed,
-                                                        collider,
-                                                    )).id();
-
-                                                    chunk.id = Option::from(entity_id);
-                                                    chunk.loaded = true;
-                                                    info!("Loaded {:?}", chunk.name);
-                                                } else {
-                                                    if let Some(entity) = chunk.id {
-                                                        if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
-                                                            *visibility = Visibility::Visible;
-                                                            if collider_disable.is_some() {
-                                                                commands.entity(entity).remove::<ColliderDisabled>();
-                                                            }
-                                                        }
-                                                    }
-                                                    chunk.loaded = true;
-                                                    info!("Loaded {:?}", chunk.name);
-                                                }
-                                            }
-                                        }
-                                    }
+                                    load_single_chunk(&mut commands, chunk, &meshes, child, mesh, &mut visibility_query);
                                 }
                             }
                         }
@@ -200,8 +160,6 @@ fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)
     let min_chunk_z = (player_position.z - view_distance).floor() / chunk_size as f32;
     let max_chunk_z = (player_position.z + view_distance).ceil() / chunk_size as f32;
 
-
-
     for x in min_chunk_x as i32..=max_chunk_x as i32 {
         for z in min_chunk_z as i32..=max_chunk_z as i32 {
             let chunk_x = x * chunk_size;
@@ -215,4 +173,54 @@ fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)
     }
 
     visible_chunks
+}
+
+fn load_single_chunk(commands: &mut Commands,
+                     chunk: &mut Chunk,
+                     meshes: &ResMut<Assets<Mesh>>,
+                     child: &GltfNode,
+                     mesh: &GltfMesh,
+                     visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>
+) {
+    if let Some(material) = &mesh.primitives[0].material {
+        let bevy_mesh = mesh.primitives[0].mesh.clone();
+
+        if let Some(col_mesh) = meshes.get(&bevy_mesh) {
+            if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
+                if chunk.id.is_none() {
+                    let entity_id = commands.spawn((
+                        Name::new(chunk.name.clone()),
+                        PbrBundle {
+                            mesh: bevy_mesh,
+                            transform: Transform {
+                                translation: child.transform.translation,
+                                scale: child.transform.scale,
+                                ..default()
+                            },
+                            visibility: Visibility::Visible,
+                            material: material.clone(),
+                            ..default()
+                        },
+                        RigidBody::Fixed,
+                        collider,
+                    )).id();
+
+                    chunk.id = Option::from(entity_id);
+                    chunk.loaded = true;
+                    info!("Loaded {:?}", chunk.name);
+                } else {
+                    if let Some(entity) = chunk.id {
+                        if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
+                            *visibility = Visibility::Visible;
+                            if collider_disable.is_some() {
+                                commands.entity(entity).remove::<ColliderDisabled>();
+                            }
+                        }
+                    }
+                    chunk.loaded = true;
+                    info!("Loaded {:?}", chunk.name);
+                }
+            }
+        }
+    }
 }
