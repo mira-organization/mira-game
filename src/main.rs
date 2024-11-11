@@ -25,7 +25,7 @@ fn initialize_app(app: &mut App) -> &mut App {
             WindowPlugin {
                 primary_window: Some(Window {
                     title: "Mira | Development State 0.1.0-alpha".to_string(),
-                    resolution: WindowResolution::new(1920.0, 1080.0),
+                    resolution: WindowResolution::new(1270.0, 720.0),
                     ..default()
                 }),
                 ..default()

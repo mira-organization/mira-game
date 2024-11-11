@@ -2,6 +2,8 @@ use std::collections::HashMap;
 use bevy::asset::LoadState;
 use bevy::gltf::{GltfMesh, GltfNode};
 use bevy::prelude::*;
+use bevy::tasks::{AsyncComputeTaskPool, Task};
+use bevy::tasks::futures_lite::future;
 use bevy_rapier3d::prelude::*;
 use crate::entities::player::Player;
 use crate::environment::{Chunk};
@@ -9,11 +11,19 @@ use crate::environment::{Chunk};
 #[derive(Component, Resource, Debug, Default)]
 pub struct ChunkManager {
     pub chunk_entries: HashMap<(i32, i32), Chunk>,
+    pub load_tasks: Vec<Task<HashMap<(i32, i32), Chunk>>>
 }
 
 #[derive(Resource)]
 pub struct SceneHandleResource {
     pub handle: Handle<Gltf>,
+}
+
+struct ChildData {
+    #[allow(dead_code)] // Only internal usage.
+    name: String,
+    translation: (i32, i32),
+    scale: i32,
 }
 
 pub struct ChunkHandlerPlugin;
@@ -24,7 +34,9 @@ impl Plugin for ChunkHandlerPlugin {
         app.add_systems(Startup,
             load_save_config_area_file);
 
-        app.add_systems(Update, (extract_chunks_from_current_areas, load_chunks, unload_chunks).after(load_save_config_area_file));
+        app.add_systems(Update, (create_chunk_loading_task, process_chunk_loading_task_data).after(load_save_config_area_file));
+
+        app.add_systems(Update, (load_chunks, unload_chunks));
     }
 }
 
@@ -38,47 +50,98 @@ fn load_save_config_area_file(mut commands: Commands,
     info!("Load scene config area from {:?}", scene_area_handle);
 }
 
-fn extract_chunks_from_current_areas(asset_server: Res<AssetServer>,
-                                     scene_handle: Res<SceneHandleResource>,
-                                     glb_handle: Res<Assets<Gltf>>,
-                                     node_handle: Res<Assets<GltfNode>>,
-                                     mut chunk_manager: ResMut<ChunkManager>,
+fn create_chunk_loading_task(
+    asset_server: Res<AssetServer>,
+    scene_handle: Res<SceneHandleResource>,
+    glb_handle: Res<Assets<Gltf>>,
+    node_handle: Res<Assets<GltfNode>>,
+    mut chunk_manager: ResMut<ChunkManager>,
 ) {
-
     let load_state = asset_server.get_load_state(&scene_handle.handle);
     if load_state != Option::from(LoadState::Loaded) {
         return;
     }
 
-    if let Some(gltf) = glb_handle.get(&scene_handle.handle) {
-        for (name, handle) in gltf.named_nodes.iter() {
-            if name.contains("chunk") {
-                if let Some(node) = node_handle.get(&*handle) {
-                    for child in node.children.iter() {
-                        if child.name.contains("terrain") {
-                            let x = child.transform.translation.x as i32;
-                            let z = child.transform.translation.z as i32;
+    if chunk_manager.chunk_entries.is_empty() { //Todo: This must be handle better, currently it will work but if we load the next area we have problems!
+    let node_data: HashMap<String, (Handle<GltfNode>, Vec<ChildData>)> = if let Some(gltf) = glb_handle.get(&scene_handle.handle) {
+        gltf.named_nodes.iter()
+            .filter_map(|(name, handle)| {
+                if let Some(node) = node_handle.get(handle) {
+                    let children = node.children.iter()
+                        .filter(|child| child.name.contains("terrain"))
+                        .map(|child| ChildData {
+                            name: child.name.clone(),
+                            translation: (child.transform.translation.x as i32, child.transform.translation.z as i32),
+                            scale: child.transform.scale.x as i32 * 2,
+                        })
+                        .collect::<Vec<_>>();
 
-                            if !chunk_manager.chunk_entries.contains_key(&(x, z)) {
-                                chunk_manager.chunk_entries.insert((x, z), Chunk {
-                                    id: None,
-                                    node: handle.clone(),
-                                    x,
-                                    z,
-                                    size: child.transform.scale.x as i32 * 2,
-                                    loaded: false,
-                                    area: "debug".to_string(),
-                                    name: name.to_string(),
-                                    player_inbound: false,
-                                });
+                    Some((name.clone().to_string(), (handle.clone(), children)))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        HashMap::new()
+    };
 
-                                info!("Insert new Chunk - {:?} - {}", name, chunk_manager.chunk_entries.len());
-                            }
-                        }
-                    }
+    let task_pool = AsyncComputeTaskPool::get();
+    let task = task_pool.spawn(async move {
+        let mut loaded_chunks = HashMap::new();
+
+        for (name, (handle, children)) in node_data.iter() {
+            for child in children {
+                let (x, z) = child.translation;
+
+                // Überprüfen, ob der Chunk bereits geladen wurde
+                if !loaded_chunks.contains_key(&(x, z)) {
+                    loaded_chunks.insert(
+                        (x, z),
+                        Chunk {
+                            id: None,
+                            node: handle.clone(),
+                            x,
+                            z,
+                            size: child.scale,
+                            loaded: false,
+                            area: "debug".to_string(),
+                            name: name.clone(),
+                            player_inbound: false,
+                        },
+                    );
+
+                    info!("Create new Chunk Thread - {:?} - {}", name, loaded_chunks.len());
                 }
             }
         }
+
+        loaded_chunks
+    });
+
+        chunk_manager.load_tasks.push(task);
+    }
+}
+
+fn process_chunk_loading_task_data(
+    mut chunk_manager: ResMut<ChunkManager>
+) {
+    let mut completed_tasks = Vec::new();
+
+    for (i, load_task) in chunk_manager.load_tasks.iter_mut().enumerate() {
+        if let Some(loaded_chunks) = future::block_on(future::poll_once(load_task)) {
+            completed_tasks.push((i, loaded_chunks));
+        }
+    }
+
+    for (i, loaded_chunks) in completed_tasks {
+        let chunk_entries = &mut chunk_manager.chunk_entries;
+
+        for (pos, chunk) in loaded_chunks {
+            chunk_entries.insert(pos, chunk);
+        }
+
+        let _ = chunk_manager.load_tasks.remove(i);
     }
 }
 
