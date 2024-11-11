@@ -11,7 +11,8 @@ use crate::environment::{Chunk};
 #[derive(Component, Resource, Debug, Default)]
 pub struct ChunkManager {
     pub chunk_entries: HashMap<(i32, i32), Chunk>,
-    pub load_tasks: Vec<Task<HashMap<(i32, i32), Chunk>>>
+    pub load_tasks: Vec<Task<HashMap<(i32, i32), Chunk>>>,
+    pub need_update: bool,
 }
 
 #[derive(Resource)]
@@ -40,14 +41,15 @@ impl Plugin for ChunkHandlerPlugin {
     }
 }
 
-// Todo: include assets loading system
 fn load_save_config_area_file(mut commands: Commands,
-                                    asset_server: Res<AssetServer>
+                              asset_server: Res<AssetServer>,
+                              mut chunk_manager: ResMut<ChunkManager>,
 ) {
     let scene_area_handle= asset_server.load("maps/debug.glb");
     commands.insert_resource(SceneHandleResource{handle: scene_area_handle.clone()});
 
     info!("Load scene config area from {:?}", scene_area_handle);
+    chunk_manager.need_update = true;
 }
 
 fn create_chunk_loading_task(
@@ -62,7 +64,7 @@ fn create_chunk_loading_task(
         return;
     }
 
-    if chunk_manager.chunk_entries.is_empty() { //Todo: This must be handle better, currently it will work but if we load the next area we have problems!
+    if chunk_manager.need_update {
     let node_data: HashMap<String, (Handle<GltfNode>, Vec<ChildData>)> = if let Some(gltf) = glb_handle.get(&scene_handle.handle) {
         gltf.named_nodes.iter()
             .filter_map(|(name, handle)| {
@@ -120,6 +122,7 @@ fn create_chunk_loading_task(
     });
 
         chunk_manager.load_tasks.push(task);
+        chunk_manager.need_update = false;
     }
 }
 
