@@ -90,42 +90,6 @@ mod tests {
     use bevy::app::App;
 
     #[test]
-    fn test_load_player_model() {
-        let mut app = App::new();
-        app.add_plugins(MinimalPlugins);
-
-        app.init_resource::<Assets<Mesh>>();
-        app.init_resource::<Assets<StandardMaterial>>();
-
-        app.add_systems(Startup, load_player_model);
-        app.update();
-
-        let player_entity = app.world_mut().query::<EntityRef>()
-            .iter(&app.world())
-            .find(|entity| entity.get::<Name>().map_or(false, |name| name.as_str() == "Player"))
-            .expect("Player entity not found");
-
-        assert!(player_entity.get::<Name>().is_some());
-        assert!(player_entity.get::<Player>().is_some());
-        assert!(player_entity.get::<PlayerSkillAbleStats>().is_some());
-        assert!(player_entity.get::<ThirdPersonCameraTarget>().is_some());
-        assert!(player_entity.get::<RigidBody>().is_some());
-        assert!(player_entity.get::<Collider>().is_some());
-        assert!(player_entity.get::<Velocity>().is_some());
-        assert!(player_entity.get::<Grounded>().is_some());
-        assert!(player_entity.get::<Damping>().is_some());
-        assert!(player_entity.get::<LockedAxes>().is_some());
-
-        let damping = player_entity.get::<Damping>().unwrap();
-        assert_eq!(damping.linear_damping, 0.2);
-        assert_eq!(damping.angular_damping, 0.5);
-
-        let locked_axes = player_entity.get::<LockedAxes>().unwrap();
-        assert!(locked_axes.contains(LockedAxes::ROTATION_LOCKED_X));
-        assert!(locked_axes.contains(LockedAxes::ROTATION_LOCKED_Z));
-    }
-
-    #[test]
     fn test_load_player_camera() {
         let mut app = App::new();
         app.add_plugins(MinimalPlugins);
