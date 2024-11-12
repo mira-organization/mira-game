@@ -96,7 +96,6 @@ fn create_chunk_loading_task(
             for child in children {
                 let (x, z) = child.translation;
 
-                // Überprüfen, ob der Chunk bereits geladen wurde
                 if !loaded_chunks.contains_key(&(x, z)) {
                     loaded_chunks.insert(
                         (x, z),
@@ -148,7 +147,6 @@ fn process_chunk_loading_task_data(
     }
 }
 
-/// Visibility: 3 chunks = rendered, 2 = visibility ready, all others destroy. Todo: make function split.
 fn load_chunks(mut commands: Commands,
                player_query: Query<&Transform, With<Player>>,
                node_handle: Res<Assets<GltfNode>>,
@@ -188,7 +186,7 @@ fn unload_chunks(mut commands: Commands,
                  mut chunk_manager: ResMut<ChunkManager>,
                  mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
 ) {
-    let unload_distance = 500.0;
+    let unload_distance = 800.0;
         if let Ok(transform) = player_query.get_single() {
             let position = transform.translation;
 
@@ -209,8 +207,6 @@ fn unload_chunks(mut commands: Commands,
                     info!("Unload {:?}", chunk.name);
                 }
             }
-
-            //Todo: Destroy system if to far.
         }
 }
 
@@ -219,7 +215,7 @@ fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)
 
     let player_position = player_transform.translation;
     let chunk_size = size;
-    let view_distance = 500.0; //Todo Change this
+    let view_distance = 800.0;
 
     let min_chunk_x = (player_position.x - view_distance).floor() / chunk_size as f32;
     let max_chunk_x = (player_position.x + view_distance).ceil() / chunk_size as f32;

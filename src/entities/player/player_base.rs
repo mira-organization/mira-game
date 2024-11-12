@@ -18,13 +18,18 @@ impl Plugin for PlayerBasePlugin {
     }
 }
 
-fn load_player_model(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>, mut materials: ResMut<Assets<StandardMaterial>>) {
+fn load_player_model(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn((
         Name::new("Player"),
-        PbrBundle {
+/*        PbrBundle {
             mesh: meshes.add(Cuboid::from_size(Vec3::splat(1.0))),
             material: materials.add(Color::srgb_u8(200, 0, 0)),
             transform: Transform::from_xyz(0.0, 2.0, 0.0),
+            ..default()
+        },*/
+        SceneBundle {
+            scene: asset_server.load(GltfAssetLabel::Scene(0).from_asset("entities/player.glb")),
+            transform: Transform::from_xyz(1.0, 30.0, 1.0),
             ..default()
         },
         Player {
