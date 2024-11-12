@@ -6,7 +6,7 @@ use bevy::prelude::*;
 use crate::environment::base::EnvironmentBase;
 use crate::environment::chunk_handler::ChunkHandlerPlugin;
 
-#[derive(Component, Resource, Reflect, Debug)]
+#[derive(Component, Resource, Reflect, Debug, Clone)]
 #[reflect(Component)]
 pub struct Chunk {
     pub id: Option<Entity>,
