@@ -1,5 +1,6 @@
 mod base;
 mod chunk_handler;
+mod chunk_builder;
 
 use bevy::gltf::GltfNode;
 use bevy::prelude::*;
