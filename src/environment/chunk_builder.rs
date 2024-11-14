@@ -1,5 +1,6 @@
 use bevy::gltf::{GltfMesh, GltfNode};
 use bevy::prelude::*;
+use bevy::render::view::NoFrustumCulling;
 use bevy_rapier3d::prelude::*;
 use crate::environment::Chunk;
 
@@ -21,9 +22,19 @@ pub fn load_terrain(commands: &mut Commands,
         if let Some(col_mesh) = meshes.get(&bevy_mesh) {
             if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
                 if chunk.id.is_none() {
+                    info!("Parent: {:?}", child);
                     let entity_id = commands.spawn((
                         Name::new(chunk.name.clone()),
-                        PbrBundle {
+                        Transform::default(),
+                        GlobalTransform::default(),
+                        VisibilityBundle {
+                            visibility: Visibility::Visible,
+                            ..default()
+                        }
+                    )).with_children(|commands| {
+                        commands.spawn((
+                            Name::new(child.name.clone()),
+                            PbrBundle {
                             mesh: bevy_mesh,
                             transform: Transform {
                                 translation: child.transform.translation,
@@ -33,10 +44,11 @@ pub fn load_terrain(commands: &mut Commands,
                             visibility: Visibility::Visible,
                             material: material.clone(),
                             ..default()
-                        },
-                        RigidBody::Fixed,
-                        collider,
-                    )).id();
+                            },
+                            RigidBody::Fixed,
+                            collider,
+                        ));
+                    }).id();
 
                     chunk.id = Option::from(entity_id);
                     chunk.loaded = true;
@@ -58,7 +70,6 @@ pub fn load_terrain(commands: &mut Commands,
     }
 }
 
-#[allow(unused)]
 pub fn load_vegetation(commands: &mut Commands,
                        chunk: &mut Chunk,
                        meshes: &ResMut<Assets<Mesh>>,
@@ -73,12 +84,14 @@ pub fn load_vegetation(commands: &mut Commands,
                 base_color: Color::srgb_u8(255, 0, 247), ..default()} ));
 
         let generated_mesh = primitive.mesh.clone();
+        info!("inner child: {:?}", child);
 
         if let Some(entity) = chunk.id {
+
             commands.entity(entity)
                 .with_children(|child_command| {
                 child_command.spawn((
-                    Name::new(primitive.name.clone()),
+                    Name::new(child.name.clone()),
                     PbrBundle {
                         mesh: generated_mesh,
                         transform: Transform {
@@ -90,7 +103,7 @@ pub fn load_vegetation(commands: &mut Commands,
                         ..default()
                     },
                     RigidBody::Fixed,
-                    Collider::cuboid(0.5, 0.5, 0.5)
+                    Collider::cuboid(0.5, 0.5, 0.5),
                 ));
             });
         } else {

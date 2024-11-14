@@ -175,6 +175,7 @@ fn load_chunks(mut commands: Commands,
                                     load_terrain(&mut commands, chunk, &meshes, &mut materials, child, mesh, &mut visibility_query);
                                 }
                             }
+                            continue;
                         }
 
                         if child.name.contains("vegetation") {
@@ -182,7 +183,16 @@ fn load_chunks(mut commands: Commands,
                                 if let Some(mesh) = mesh_handle.get(&*mesh_option) {
                                     load_vegetation(&mut commands, chunk, &meshes, &mut materials, child, mesh, &mut visibility_query);
                                 }
+                            } else {
+                                for inner_child in child.children.iter() {
+                                    if let Some(mesh_option) = &inner_child.mesh {
+                                        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+                                            load_vegetation(&mut commands, chunk, &meshes, &mut materials, inner_child, mesh, &mut visibility_query);
+                                        }
+                                    }
+                                }
                             }
+                            continue;
                         }
 
                         if child.name.contains("structures") {
