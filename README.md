@@ -26,7 +26,7 @@ If you work on the project you push your code to a separate branch like **featur
 We don't push directly on develop, staging or main. The CI will check your code and build them. If the <br>
 CI actions was failed your commit (Pull Request) will not be merged. At the following we talk about our branches.
 
-### Develop (default)
+### Develop (Default)
 
 The develop branch is the default one for us programmer. If you create a pull request make sure in head to develop. <br>
 This branch is in main time up to date and this is absolutely needed for the tester team. <br>
