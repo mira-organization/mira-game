@@ -109,7 +109,6 @@ fn create_chunk_loading_task(
                             loaded: false,
                             area: "debug".to_string(),
                             name: name.clone(),
-                            player_inbound: false,
                         },
                     );
 
