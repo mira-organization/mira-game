@@ -147,14 +147,15 @@ fn process_chunk_loading_task_data(
     }
 }
 
-fn load_chunks(mut commands: Commands,
-               player_query: Query<&Transform, With<Player>>,
-               node_handle: Res<Assets<GltfNode>>,
-               mesh_handle: Res<Assets<GltfMesh>>,
-               meshes: ResMut<Assets<Mesh>>,
-               mut materials: ResMut<Assets<StandardMaterial>>,
-               mut chunk_manager: ResMut<ChunkManager>,
-               mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+fn load_chunks(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    node_handle: Res<Assets<GltfNode>>,
+    mesh_handle: Res<Assets<GltfMesh>>,
+    meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut chunk_manager: ResMut<ChunkManager>,
+    mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
 ) {
     if let Ok(transform) = player_query.get_single() {
         let visible_chunks = get_visible_chunks(&transform, 512);
@@ -166,44 +167,94 @@ fn load_chunks(mut commands: Commands,
                     continue;
                 }
 
-                if let Some(node) = node_handle.get(&chunk.node) {
-                    for child in node.children.iter() {
-                        if child.name.contains("terrain") {
-                            if let Some(mesh_option) = &child.mesh {
-                                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                    load_terrain(&mut commands, chunk, &meshes, &mut materials, child, mesh, &mut visibility_query);
-                                }
-                            }
-                            continue;
-                        }
+                process_chunk(
+                    &mut commands,
+                    chunk,
+                    &node_handle,
+                    &mesh_handle,
+                    &meshes,
+                    &mut materials,
+                    &mut visibility_query,
+                );
+            }
+        }
+    }
+}
 
-                        if child.name.contains("vegetation") {
-                            if let Some(mesh_option) = &child.mesh {
-                                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                    load_vegetation(&mut commands, chunk, &meshes, &mut materials, child, mesh, &mut visibility_query);
-                                }
-                            } else {
-                                for inner_child in child.children.iter() {
-                                    if let Some(mesh_option) = &inner_child.mesh {
-                                        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                            load_vegetation(&mut commands, chunk, &meshes, &mut materials, inner_child, mesh, &mut visibility_query);
-                                        }
-                                    }
-                                }
-                            }
-                            continue;
-                        }
+fn process_chunk(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    node_handle: &Res<Assets<GltfNode>>,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(node) = node_handle.get(&chunk.node) {
+        for child in node.children.iter() {
+            if child.name.contains("terrain") {
+                handle_terrain(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            } else if child.name.contains("vegetation") {
+                handle_vegetation(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            } else if child.name.contains("structures") {
+                handle_structures(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            }
+        }
+    }
+}
 
-                        if child.name.contains("structures") {
-                            if let Some(mesh_option) = &child.mesh {
-                                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                    load_structures(&mut commands, chunk, &meshes, &mut materials, child, mesh, &mut visibility_query);
-                                }
-                            }
-                        }
-                    }
+fn handle_terrain(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_terrain(commands, chunk, meshes, materials, child, mesh, visibility_query);
+        }
+    }
+}
+
+fn handle_vegetation(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_vegetation(commands, chunk, meshes, materials, child, mesh, visibility_query);
+        }
+    } else {
+        for inner_child in child.children.iter() {
+            if let Some(mesh_option) = &inner_child.mesh {
+                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+                    load_vegetation(commands, chunk, meshes, materials, inner_child, mesh, visibility_query);
                 }
             }
+        }
+    }
+}
+
+fn handle_structures(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_structures(commands, chunk, meshes, materials, child, mesh, visibility_query);
         }
     }
 }
