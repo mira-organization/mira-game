@@ -50,7 +50,7 @@ pub fn load_terrain(commands: &mut Commands,
 
                     chunk.id = Option::from(entity_id);
                     chunk.loaded = true;
-                    info!("Loaded {:?}", chunk.name);
+                    debug!("Loaded {:?}", chunk.name);
                 } else {
                     if let Some(entity) = chunk.id {
                         if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
@@ -61,7 +61,7 @@ pub fn load_terrain(commands: &mut Commands,
                         }
                     }
                     chunk.loaded = true;
-                    info!("Loaded {:?}", chunk.name);
+                    debug!("Loaded {:?}", chunk.name);
                 }
             }
         }
@@ -76,39 +76,9 @@ pub fn load_vegetation(commands: &mut Commands,
                        mesh: &GltfMesh,
                        _visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)> // Using for de-chunk
 ) {
-    for primitive in &mesh.primitives {
-        let material = primitive.material.clone()
-            .unwrap_or_else(|| materials.add(StandardMaterial {
-                base_color: Color::srgb_u8(255, 0, 247), ..default()} ));
+    process_primitives(commands, chunk, materials, mesh, child);
 
-        let generated_mesh = primitive.mesh.clone();
-
-        if let Some(entity) = chunk.id {
-
-            commands.entity(entity)
-                .with_children(|child_command| {
-                    child_command.spawn((
-                        Name::new(child.name.clone()),
-                        PbrBundle {
-                            mesh: generated_mesh,
-                            transform: Transform {
-                                translation: child.transform.translation,
-                                scale: child.transform.scale,
-                                ..default()
-                            },
-                            material: material.clone(),
-                            ..default()
-                        },
-                        RigidBody::Fixed,
-                        Collider::cuboid(0.5, 0.5, 0.5),
-                    ));
-            });
-        } else {
-            error!("Load first the load_terrain function for creating a entity for the chunk!");
-        }
-    }
-
-    info!("Include vegetation for chunk [ {:?} ]", chunk.name.clone());
+    debug!("Include vegetation for chunk [ {:?} ]", chunk.name.clone());
 }
 
 #[allow(unused)]
@@ -121,4 +91,48 @@ pub fn load_structures(commands: &mut Commands,
                        visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>
 ) {
 
+    process_primitives(commands, chunk, materials, mesh, child);
+
+    debug!("Include structures for chunk [ {:?} ]", chunk.name.clone());
+}
+
+fn process_primitives(
+    commands: &mut Commands,
+    chunk: &Chunk,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    mesh: &GltfMesh,
+    child: &GltfNode,
+) {
+    for primitive in &mesh.primitives {
+        let material = primitive.material.clone().unwrap_or_else(|| {
+            materials.add(StandardMaterial {
+                base_color: Color::srgb_u8(255, 0, 247),
+                ..default()
+            })
+        });
+
+        let generated_mesh = primitive.mesh.clone();
+
+        if let Some(entity) = chunk.id {
+            commands.entity(entity).with_children(|child_command| {
+                child_command.spawn((
+                    Name::new(child.name.clone()),
+                    PbrBundle {
+                        mesh: generated_mesh,
+                        transform: Transform {
+                            translation: child.transform.translation,
+                            scale: child.transform.scale,
+                            ..default()
+                        },
+                        material: material.clone(),
+                        ..default()
+                    },
+                    RigidBody::Fixed,
+                    Collider::cuboid(0.5, 0.5, 0.5),
+                ));
+            });
+        } else {
+            error!("Load the terrain first to create an entity for the chunk!");
+        }
+    }
 }

@@ -112,7 +112,7 @@ fn create_chunk_loading_task(
                         },
                     );
 
-                    info!("Create new Chunk Thread - {:?} - {}", name, loaded_chunks.len());
+                    debug!("Create new Chunk Thread - {:?} - {}", name, loaded_chunks.len());
                 }
             }
         }
@@ -233,13 +233,10 @@ fn handle_vegetation(
             load_vegetation(commands, chunk, meshes, materials, child, mesh, visibility_query);
         }
     } else {
-        for inner_child in child.children.iter() {
-            if let Some(mesh_option) = &inner_child.mesh {
-                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                    load_vegetation(commands, chunk, meshes, materials, inner_child, mesh, visibility_query);
-                }
-            }
+        if child.children.is_empty() {
+            return;
         }
+        process_node_recursively("vegetation", commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
     }
 }
 
@@ -256,6 +253,11 @@ fn handle_structures(
         if let Some(mesh) = mesh_handle.get(&*mesh_option) {
             load_structures(commands, chunk, meshes, materials, child, mesh, visibility_query);
         }
+    } else {
+        if child.children.is_empty() {
+            return;
+        }
+        process_node_recursively("structures", commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
     }
 }
 
@@ -282,7 +284,7 @@ fn unload_chunks(mut commands: Commands,
                         }
                     }
                     chunk.loaded = false;
-                    info!("Unload {:?}", chunk.name);
+                    debug!("Unload {:?}", chunk.name);
                 }
             }
         }
@@ -314,3 +316,61 @@ fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)
 
     visible_chunks
 }
+
+// ToDo: EXPERIMENTAL TEST IS NEEDED!
+fn process_node_recursively(
+    category: &str,
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    node: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    for child in node.children.iter() {
+        if let Some(mesh_option) = &child.mesh {
+            if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+                if category.eq_ignore_ascii_case("vegetation") {
+                    load_vegetation(
+                        commands,
+                        chunk,
+                        meshes,
+                        materials,
+                        child,
+                        mesh,
+                        visibility_query,
+                    );
+                    continue;
+                }
+                if category.eq_ignore_ascii_case("structures") {
+                    load_structures(
+                        commands,
+                        chunk,
+                        meshes,
+                        materials,
+                        child,
+                        mesh,
+                        visibility_query,
+                    );
+                    continue;
+                }
+            }
+        } else {
+            if child.children.is_empty() {
+                continue;
+            }
+            process_node_recursively(
+                category,
+                commands,
+                chunk,
+                meshes,
+                materials,
+                child,
+                mesh_handle,
+                visibility_query
+            );
+        }
+    }
+}
+
