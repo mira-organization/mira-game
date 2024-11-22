@@ -42,6 +42,7 @@ impl Plugin for ChunkHandlerPlugin {
     }
 }
 
+/// func load area files. Note this need to be change because the area file is hard coded.
 fn load_save_config_area_file(mut commands: Commands,
                               asset_server: Res<AssetServer>,
                               mut chunk_manager: ResMut<ChunkManager>,
@@ -53,6 +54,7 @@ fn load_save_config_area_file(mut commands: Commands,
     chunk_manager.need_update = true;
 }
 
+/// func create a new async task for [`process_chunk_loading_task_data`].
 fn create_chunk_loading_task(
     asset_server: Res<AssetServer>,
     scene_handle: Res<SceneHandleResource>,
@@ -125,6 +127,7 @@ fn create_chunk_loading_task(
     }
 }
 
+/// create async task for handle [`Chunk`] by [`Chunk`].
 fn process_chunk_loading_task_data(
     mut chunk_manager: ResMut<ChunkManager>
 ) {
@@ -147,6 +150,7 @@ fn process_chunk_loading_task_data(
     }
 }
 
+/// load chunks if the player near. Used the [``get_visible_chunks`] func internal.
 fn load_chunks(
     mut commands: Commands,
     player_query: Query<&Transform, With<Player>>,
@@ -181,6 +185,7 @@ fn load_chunks(
     }
 }
 
+/// func for process [`Chunk`] building. Func called [`handle_terrain`], [`handle_vegetation`] and [`handle_structures`].
 fn process_chunk(
     commands: &mut Commands,
     chunk: &mut Chunk,
@@ -203,6 +208,7 @@ fn process_chunk(
     }
 }
 
+/// internal func for handle terrain which found by [`Chunk`].
 fn handle_terrain(
     commands: &mut Commands,
     chunk: &mut Chunk,
@@ -219,6 +225,7 @@ fn handle_terrain(
     }
 }
 
+/// internal func for handle vegetations which found by [`Chunk`].
 fn handle_vegetation(
     commands: &mut Commands,
     chunk: &mut Chunk,
@@ -240,6 +247,7 @@ fn handle_vegetation(
     }
 }
 
+/// internal func for handle structures which found by [`Chunk`].
 fn handle_structures(
     commands: &mut Commands,
     chunk: &mut Chunk,
@@ -261,6 +269,7 @@ fn handle_structures(
     }
 }
 
+/// unload chunks if the player to fdr away.
 fn unload_chunks(mut commands: Commands,
                  player_query: Query<&Transform, With<Player>>,
                  mut chunk_manager: ResMut<ChunkManager>,
@@ -290,6 +299,7 @@ fn unload_chunks(mut commands: Commands,
         }
 }
 
+/// checks chunk visibility by player position. This is needed for unload and load chunks.
 fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)> {
     let mut visible_chunks = Vec::new();
 
@@ -372,5 +382,22 @@ fn process_node_recursively(
             );
         }
     }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chunk_manager_initialization() {
+        let mut app = App::new();
+        app.insert_resource(ChunkManager::default());
+
+        let chunk_manager = app.world().resource::<ChunkManager>();
+        assert!(chunk_manager.chunk_entries.is_empty());
+        assert!(chunk_manager.load_tasks.is_empty());
+        assert_eq!(chunk_manager.need_update, false);
+    }
+
 }
 
