@@ -75,8 +75,8 @@ fn load_player_camera(mut commands: Commands) {
         FogSettings {
             color: Color::srgb(0.25, 0.25, 0.30),
             falloff: FogFalloff::Linear {
-                start: 325.0,
-                end: 500.0,
+                start: 600.0,
+                end: 780.0,
             },
             ..default()
         },
@@ -110,8 +110,8 @@ mod tests {
 
         let fog = camera_entity.get::<FogSettings>().unwrap();
         if let FogFalloff::Linear { start, end } = fog.falloff {
-            assert_eq!(start, 325.0);
-            assert_eq!(end, 500.0);
+            assert_eq!(start, 600.0);
+            assert_eq!(end, 780.0);
         } else {
             panic!("Unexpected FogFalloff type");
         }

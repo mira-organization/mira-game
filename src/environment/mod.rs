@@ -1,5 +1,6 @@
 mod base;
 mod chunk_handler;
+mod chunk_builder;
 
 use bevy::gltf::GltfNode;
 use bevy::prelude::*;
@@ -16,14 +17,14 @@ pub struct Chunk {
     pub size: i32,
     pub loaded: bool,
     pub area: String,
-    pub name: String,
-    pub player_inbound: bool
+    pub name: String
 }
 
 pub struct EnvironmentPlugin;
 
 impl Plugin for EnvironmentPlugin {
     fn build(&self, app: &mut App) {
+        app.register_type::<Chunk>();
         app.add_plugins((EnvironmentBase, ChunkHandlerPlugin));
     }
 }

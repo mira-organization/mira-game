@@ -7,6 +7,7 @@ use bevy::tasks::futures_lite::future;
 use bevy_rapier3d::prelude::*;
 use crate::entities::player::Player;
 use crate::environment::{Chunk};
+use crate::environment::chunk_builder::*;
 
 #[derive(Component, Resource, Debug, Default)]
 pub struct ChunkManager {
@@ -41,6 +42,7 @@ impl Plugin for ChunkHandlerPlugin {
     }
 }
 
+/// func load area files. Note this need to be change because the area file is hard coded.
 fn load_save_config_area_file(mut commands: Commands,
                               asset_server: Res<AssetServer>,
                               mut chunk_manager: ResMut<ChunkManager>,
@@ -52,6 +54,7 @@ fn load_save_config_area_file(mut commands: Commands,
     chunk_manager.need_update = true;
 }
 
+/// func create a new async task for [`process_chunk_loading_task_data`].
 fn create_chunk_loading_task(
     asset_server: Res<AssetServer>,
     scene_handle: Res<SceneHandleResource>,
@@ -108,11 +111,10 @@ fn create_chunk_loading_task(
                             loaded: false,
                             area: "debug".to_string(),
                             name: name.clone(),
-                            player_inbound: false,
                         },
                     );
 
-                    info!("Create new Chunk Thread - {:?} - {}", name, loaded_chunks.len());
+                    debug!("Create new Chunk Thread - {:?} - {}", name, loaded_chunks.len());
                 }
             }
         }
@@ -125,6 +127,7 @@ fn create_chunk_loading_task(
     }
 }
 
+/// create async task for handle [`Chunk`] by [`Chunk`].
 fn process_chunk_loading_task_data(
     mut chunk_manager: ResMut<ChunkManager>
 ) {
@@ -147,13 +150,16 @@ fn process_chunk_loading_task_data(
     }
 }
 
-fn load_chunks(mut commands: Commands,
-               player_query: Query<&Transform, With<Player>>,
-               node_handle: Res<Assets<GltfNode>>,
-               mesh_handle: Res<Assets<GltfMesh>>,
-               meshes: ResMut<Assets<Mesh>>,
-               mut chunk_manager: ResMut<ChunkManager>,
-               mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+/// load chunks if the player near. Used the [``get_visible_chunks`] func internal.
+fn load_chunks(
+    mut commands: Commands,
+    player_query: Query<&Transform, With<Player>>,
+    node_handle: Res<Assets<GltfNode>>,
+    mesh_handle: Res<Assets<GltfMesh>>,
+    meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    mut chunk_manager: ResMut<ChunkManager>,
+    mut visibility_query: Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
 ) {
     if let Ok(transform) = player_query.get_single() {
         let visible_chunks = get_visible_chunks(&transform, 512);
@@ -165,22 +171,105 @@ fn load_chunks(mut commands: Commands,
                     continue;
                 }
 
-                if let Some(node) = node_handle.get(&chunk.node) {
-                    for child in node.children.iter() {
-                        if child.name.contains("terrain") {
-                            if let Some(mesh_option) = &child.mesh {
-                                if let Some(mesh) = mesh_handle.get(&*mesh_option) {
-                                    load_single_chunk(&mut commands, chunk, &meshes, child, mesh, &mut visibility_query);
-                                }
-                            }
-                        }
-                    }
-                }
+                process_chunk(
+                    &mut commands,
+                    chunk,
+                    &node_handle,
+                    &mesh_handle,
+                    &meshes,
+                    &mut materials,
+                    &mut visibility_query,
+                );
             }
         }
     }
 }
 
+/// func for process [`Chunk`] building. Func called [`handle_terrain`], [`handle_vegetation`] and [`handle_structures`].
+fn process_chunk(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    node_handle: &Res<Assets<GltfNode>>,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(node) = node_handle.get(&chunk.node) {
+        for child in node.children.iter() {
+            if child.name.contains("terrain") {
+                handle_terrain(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            } else if child.name.contains("vegetation") {
+                handle_vegetation(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            } else if child.name.contains("structures") {
+                handle_structures(commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+            }
+        }
+    }
+}
+
+/// internal func for handle terrain which found by [`Chunk`].
+fn handle_terrain(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_terrain(commands, chunk, meshes, materials, child, mesh, visibility_query);
+        }
+    }
+}
+
+/// internal func for handle vegetations which found by [`Chunk`].
+fn handle_vegetation(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_vegetation(commands, chunk, meshes, materials, child, mesh, visibility_query);
+        }
+    } else {
+        if child.children.is_empty() {
+            return;
+        }
+        process_node_recursively("vegetation", commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+    }
+}
+
+/// internal func for handle structures which found by [`Chunk`].
+fn handle_structures(
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    child: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
+) {
+    if let Some(mesh_option) = &child.mesh {
+        if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+            load_structures(commands, chunk, meshes, materials, child, mesh, visibility_query);
+        }
+    } else {
+        if child.children.is_empty() {
+            return;
+        }
+        process_node_recursively("structures", commands, chunk, meshes, materials, child, mesh_handle, visibility_query);
+    }
+}
+
+/// unload chunks if the player to fdr away.
 fn unload_chunks(mut commands: Commands,
                  player_query: Query<&Transform, With<Player>>,
                  mut chunk_manager: ResMut<ChunkManager>,
@@ -204,12 +293,13 @@ fn unload_chunks(mut commands: Commands,
                         }
                     }
                     chunk.loaded = false;
-                    info!("Unload {:?}", chunk.name);
+                    debug!("Unload {:?}", chunk.name);
                 }
             }
         }
 }
 
+/// checks chunk visibility by player position. This is needed for unload and load chunks.
 fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)> {
     let mut visible_chunks = Vec::new();
 
@@ -237,52 +327,77 @@ fn get_visible_chunks(player_transform: &Transform, size: i32) -> Vec<(i32, i32)
     visible_chunks
 }
 
-fn load_single_chunk(commands: &mut Commands,
-                     chunk: &mut Chunk,
-                     meshes: &ResMut<Assets<Mesh>>,
-                     child: &GltfNode,
-                     mesh: &GltfMesh,
-                     visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>
+// ToDo: EXPERIMENTAL TEST IS NEEDED!
+fn process_node_recursively(
+    category: &str,
+    commands: &mut Commands,
+    chunk: &mut Chunk,
+    meshes: &ResMut<Assets<Mesh>>,
+    materials: &mut ResMut<Assets<StandardMaterial>>,
+    node: &GltfNode,
+    mesh_handle: &Res<Assets<GltfMesh>>,
+    visibility_query: &mut Query<(&mut Visibility, Option<&mut ColliderDisabled>)>,
 ) {
-    if let Some(material) = &mesh.primitives[0].material {
-        let bevy_mesh = mesh.primitives[0].mesh.clone();
-
-        if let Some(col_mesh) = meshes.get(&bevy_mesh) {
-            if let Some(collider) = Collider::from_bevy_mesh(col_mesh, &ComputedColliderShape::TriMesh) {
-                if chunk.id.is_none() {
-                    let entity_id = commands.spawn((
-                        Name::new(chunk.name.clone()),
-                        PbrBundle {
-                            mesh: bevy_mesh,
-                            transform: Transform {
-                                translation: child.transform.translation,
-                                scale: child.transform.scale,
-                                ..default()
-                            },
-                            visibility: Visibility::Visible,
-                            material: material.clone(),
-                            ..default()
-                        },
-                        RigidBody::Fixed,
-                        collider,
-                    )).id();
-
-                    chunk.id = Option::from(entity_id);
-                    chunk.loaded = true;
-                    info!("Loaded {:?}", chunk.name);
-                } else {
-                    if let Some(entity) = chunk.id {
-                        if let Ok((mut visibility, collider_disable)) = visibility_query.get_mut(entity) {
-                            *visibility = Visibility::Visible;
-                            if collider_disable.is_some() {
-                                commands.entity(entity).remove::<ColliderDisabled>();
-                            }
-                        }
-                    }
-                    chunk.loaded = true;
-                    info!("Loaded {:?}", chunk.name);
+    for child in node.children.iter() {
+        if let Some(mesh_option) = &child.mesh {
+            if let Some(mesh) = mesh_handle.get(&*mesh_option) {
+                if category.eq_ignore_ascii_case("vegetation") {
+                    load_vegetation(
+                        commands,
+                        chunk,
+                        meshes,
+                        materials,
+                        child,
+                        mesh,
+                        visibility_query,
+                    );
+                    continue;
+                }
+                if category.eq_ignore_ascii_case("structures") {
+                    load_structures(
+                        commands,
+                        chunk,
+                        meshes,
+                        materials,
+                        child,
+                        mesh,
+                        visibility_query,
+                    );
+                    continue;
                 }
             }
+        } else {
+            if child.children.is_empty() {
+                continue;
+            }
+            process_node_recursively(
+                category,
+                commands,
+                chunk,
+                meshes,
+                materials,
+                child,
+                mesh_handle,
+                visibility_query
+            );
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_chunk_manager_initialization() {
+        let mut app = App::new();
+        app.insert_resource(ChunkManager::default());
+
+        let chunk_manager = app.world().resource::<ChunkManager>();
+        assert!(chunk_manager.chunk_entries.is_empty());
+        assert!(chunk_manager.load_tasks.is_empty());
+        assert_eq!(chunk_manager.need_update, false);
+    }
+
+}
+
