@@ -1,8 +1,6 @@
 use bevy::prelude::*;
-use bevy_rapier3d::dynamics::Velocity;
-use bevy_rapier3d::pipeline::QueryFilter;
-use bevy_rapier3d::plugin::RapierContext;
-use crate::entities::player::{Player, PlayerState};
+use bevy_rapier3d::prelude::{QueryFilter, RapierContext, Real, Velocity};
+use crate::entities::player::{Grounded, Player, PlayerState};
 
 #[derive(Event)]
 pub enum InputAction {
@@ -10,18 +8,14 @@ pub enum InputAction {
     Move(Vec3),
     Sprinting(Vec3),
     Dodge,
-    Jump,
+    Jump
 }
-
-#[derive(Component, Reflect, Debug)]
-pub struct Grounded(pub bool);
 
 pub struct PlayerInputPlugin;
 
 impl Plugin for PlayerInputPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<InputAction>();
-        app.register_type::<Grounded>();
 
         app.add_systems(Update, (
             fetch_keyboard_input,
@@ -44,13 +38,13 @@ fn fetch_keyboard_input(mut input_event_writer: EventWriter<InputAction>,
             let left_key = KeyCode::KeyA;
             let right_key = KeyCode::KeyD;
 
-            let sprint_key = KeyCode::Space;
+            let sprinting_key = KeyCode::Space;
             let dodge_key = KeyCode::Space;
             let jump_key = KeyCode::KeyF;
 
-            let mut dodge_alone = true;
-            if dodge_key == sprint_key {
-                dodge_alone = false;
+            let mut dodge_alone_used = true;
+            if dodge_key == sprinting_key {
+                dodge_alone_used = false;
             }
 
             let mut direction = Vec3::ZERO;
@@ -65,14 +59,14 @@ fn fetch_keyboard_input(mut input_event_writer: EventWriter<InputAction>,
             if keyboard.pressed(left_key) {
                 direction += cam_transform.left().as_vec3();
             }
-
             if keyboard.pressed(right_key) {
                 direction += cam_transform.right().as_vec3();
             }
 
             if direction.length_squared() > 0.0 {
                 let normalized_direction = direction.normalize();
-                if keyboard.pressed(forward_key) || keyboard.pressed(backward_key) || keyboard.pressed(left_key) || keyboard.pressed(right_key) {
+                if keyboard.pressed(left_key) || keyboard.pressed(right_key) ||
+                    keyboard.pressed(forward_key) || keyboard.pressed(backward_key) {
                     if player.state != PlayerState::Dodging && player.state != PlayerState::Jumping {
                         input_event_writer.send(InputAction::Move(normalized_direction));
                     }
@@ -87,25 +81,25 @@ fn fetch_keyboard_input(mut input_event_writer: EventWriter<InputAction>,
                 }
             }
 
-            if keyboard.just_pressed(sprint_key) {
+            if keyboard.just_pressed(sprinting_key) {
                 if player.state == PlayerState::Dodging {
                     return;
                 }
                 player.timers.sprint_timer = 0.0;
-            } else if keyboard.pressed(sprint_key) {
-                player.timers.sprint_timer += time.delta_seconds();
+            } else if keyboard.pressed(sprinting_key) {
+                player.timers.sprint_timer += time.delta_secs();
 
                 if player.timers.sprint_timer > 0.6 {
                     input_event_writer.send(InputAction::Sprinting(direction.normalize()));
                 }
-            } else if keyboard.just_released(sprint_key) {
-                if player.timers.sprint_timer <= 0.2 && !dodge_alone {
+            } else if keyboard.just_released(sprinting_key) {
+                if player.timers.sprint_timer <= 0.2 && !dodge_alone_used {
                     input_event_writer.send(InputAction::Dodge);
                 }
                 player.timers.sprint_timer = 0.0;
             }
 
-            if dodge_alone {
+            if dodge_alone_used {
                 if keyboard.just_pressed(dodge_key) {
                     input_event_writer.send(InputAction::Dodge);
                     player.timers.sprint_timer = 0.0;
@@ -131,7 +125,7 @@ fn update_movement(time: Res<Time>,
                         let flat_direction = Vec3::new(direction.x, 0.0, direction.z).normalize();
                         let target_rotation = Quat::from_rotation_arc(-Vec3::Z, flat_direction);
                         transform.rotation = transform.rotation.slerp(target_rotation, 0.1);
-                        let movement_speed = (player.base.speed * 100.0) * time.delta_seconds();
+                        let movement_speed = (player.base.speed * 100.0) * time.delta_secs();
                         velocity.linvel = Vec3::new(flat_direction.x * movement_speed, velocity.linvel.y, flat_direction.z * movement_speed);
                         player.state = PlayerState::Moving;
                         velocity.angvel = Vec3::ZERO;
@@ -153,7 +147,7 @@ fn update_movement(time: Res<Time>,
                             transform.rotation = transform.rotation.slerp(target_rotation, 0.1);
                         }
 
-                        let movement_speed = ((player.base.speed * player.speed_sprinting_multiplier) * 100.0) * time.delta_seconds();
+                        let movement_speed = ((player.base.speed * player.speed_sprinting_multiplier) * 100.0) * time.delta_secs();
                         velocity.linvel = Vec3::new(flat_direction.x * movement_speed, velocity.linvel.y, flat_direction.z * movement_speed);
                         if player.state != PlayerState::Jumping {
                             player.state = PlayerState::Sprinting;
@@ -202,19 +196,21 @@ fn update_movement(time: Res<Time>,
 }
 
 fn ground_check(mut player_query: Query<(&mut Transform, &mut Player, &mut Grounded), With<Player>>,
-                rapier_context: Res<RapierContext>
+                rapier_context: Query<&RapierContext>
 ) {
     for (transform, mut player, mut grounded) in player_query.iter_mut() {
         let ray_start = transform.translation + Vec3::new(0.0, 0.15, 0.0);
-        if let Some((_entity, _toi)) = rapier_context.cast_ray(
-            ray_start, Vec3::NEG_Y, 0.2, true, QueryFilter::only_fixed()
-        ) {
-            grounded.0 = true;
-            if player.state == PlayerState::Jumping {
-                player.state = PlayerState::Idling;
+        if let Ok(context) = rapier_context.get_single() {
+            if let Some((_entity, _toi)) = context.cast_ray(
+                ray_start, Vec3::NEG_Y, 0.2 as Real, true, QueryFilter::only_fixed()
+            ) {
+                grounded.0 = true;
+                if player.state == PlayerState::Jumping {
+                    player.state = PlayerState::Idling;
+                }
+            } else {
+                grounded.0 = false;
             }
-        } else {
-            grounded.0 = false;
         }
     }
 }

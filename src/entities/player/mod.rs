@@ -6,7 +6,6 @@ use crate::entities::EntitiesBase;
 use crate::entities::player::player_base::PlayerBasePlugin;
 use crate::entities::player::player_input::PlayerInputPlugin;
 
-//################################################# Models #################################################
 #[derive(Component, Reflect, Resource, Debug)]
 #[reflect(Component)]
 pub struct Player {
@@ -69,7 +68,7 @@ pub struct ConsumeEntries {
 pub struct PlayerSkillAbleStats {
     pub vitality: f32,
     pub endurance: f32,
-    pub attunement: f32,
+    pub atonement: f32,
     pub strength: f32,
     pub dexterity: f32,
     pub intelligence: f32,
@@ -87,7 +86,9 @@ pub struct PlayerGeneralStats {
     pub discovery: f32
 }
 
-//################################################# Default Values #################################################
+#[derive(Component, Reflect, Debug)]
+pub struct Grounded(pub bool);
+
 impl Default for Player {
     fn default() -> Self {
         Self {
@@ -140,7 +141,7 @@ impl Default for PlayerSkillAbleStats {
         Self {
             vitality: 0.0,
             endurance: 0.0,
-            attunement: 0.0,
+            atonement: 0.0,
             strength: 0.0,
             dexterity: 0.0,
             intelligence: 0.0,
@@ -167,6 +168,10 @@ pub struct PlayerPlugin;
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
         app.register_type::<Player>();
-        app.add_plugins((PlayerBasePlugin, PlayerInputPlugin));
+        app.register_type::<Grounded>();
+        app.add_plugins((
+            PlayerBasePlugin,
+            PlayerInputPlugin
+        ));
     }
 }

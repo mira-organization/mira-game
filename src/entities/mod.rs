@@ -1,4 +1,4 @@
-pub mod player;
+mod player;
 
 use bevy::prelude::*;
 use crate::entities::player::PlayerPlugin;

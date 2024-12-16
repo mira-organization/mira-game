@@ -1,30 +1,12 @@
-mod base;
-mod chunk_handler;
-mod chunk_builder;
-
-use bevy::gltf::GltfNode;
 use bevy::prelude::*;
-use crate::environment::base::EnvironmentBase;
-use crate::environment::chunk_handler::ChunkHandlerPlugin;
+use crate::environment::test_room::TestRoomPlugin;
 
-#[derive(Component, Resource, Reflect, Debug, Clone)]
-#[reflect(Component)]
-pub struct Chunk {
-    pub id: Option<Entity>,
-    pub node: Handle<GltfNode>,
-    pub x: i32,
-    pub z: i32,
-    pub size: i32,
-    pub loaded: bool,
-    pub area: String,
-    pub name: String
-}
+mod test_room;
 
 pub struct EnvironmentPlugin;
 
 impl Plugin for EnvironmentPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Chunk>();
-        app.add_plugins((EnvironmentBase, ChunkHandlerPlugin));
+        app.add_plugins(TestRoomPlugin);
     }
 }
