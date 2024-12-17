@@ -14,7 +14,7 @@ fn create_flat_test_area(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>
         Name::new("Test Flat"),
         Mesh3d(meshes.add(Plane3d::mesh(&Default::default()).size(200.0, 200.0))),
         MeshMaterial3d(materials.add(Color::srgb(0.3, 0.3, 0.3))),
-        Transform::from_xyz(0.0, -40.0, 0.0),
+        Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
         RigidBody::Fixed,
         Collider::cuboid(100.0, 0.1, 100.0),

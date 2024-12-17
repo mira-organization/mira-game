@@ -8,7 +8,7 @@ use crate::entities::player::player_input::PlayerInputPlugin;
 
 #[derive(Component, Reflect, Resource, Debug)]
 #[reflect(Component)]
-pub struct Player {
+pub struct PlayerStats {
     pub general: PlayerGeneralStats,
     pub base: EntitiesBase,
     pub speed_sprinting_multiplier: f32,
@@ -89,7 +89,7 @@ pub struct PlayerGeneralStats {
 #[derive(Component, Reflect, Debug)]
 pub struct Grounded(pub bool);
 
-impl Default for Player {
+impl Default for PlayerStats {
     fn default() -> Self {
         Self {
             general: PlayerGeneralStats::default(),
@@ -167,7 +167,7 @@ pub struct PlayerPlugin;
 
 impl Plugin for PlayerPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Player>();
+        app.register_type::<PlayerStats>();
         app.register_type::<Grounded>();
         app.add_plugins((
             PlayerBasePlugin,

@@ -1017,15 +1017,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_pipelines_ready"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11af1625c632617edfffa857736496ff04914dd32376cf62da4d1ce5895ded8d"
-dependencies = [
- "bevy",
-]
-
-[[package]]
 name = "bevy_ptr"
 version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3116,9 +3107,9 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui",
  "bevy_atmosphere",
- "bevy_pipelines_ready",
  "bevy_rapier3d",
  "bevy_third_person_camera",
+ "rand",
  "serde",
 ]
 

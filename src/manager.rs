@@ -5,6 +5,15 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_rapier3d::prelude::{DebugRenderStyle, NoUserData, RapierDebugRenderPlugin, RapierPhysicsPlugin};
 use crate::entities::EntitiesPlugin;
 use crate::environment::EnvironmentPlugin;
+use crate::logic::LogicPlugin;
+
+#[derive(Component, States, Default, Debug, Clone, PartialEq, Eq, Hash)]
+#[allow(dead_code)]
+pub enum AssetState {
+    #[default]
+    Loading,
+    Ready
+}
 
 #[derive(Component, States, Debug, Clone, PartialEq, Eq, Hash)]
 #[allow(dead_code)]
@@ -55,6 +64,9 @@ pub struct ManagerPlugin;
 impl Plugin for ManagerPlugin {
     fn build(&self, app: &mut App) {
         app.init_state::<AppState>();
+        app.init_state::<AssetState>();
+
+        app.enable_state_scoped_entities::<AssetState>();
 
         app.add_plugins(WorldInspectorPlugin::default().run_if(input_toggle_active(false, KeyCode::F3)));
 
@@ -65,6 +77,7 @@ impl Plugin for ManagerPlugin {
             ));
 
         app.add_plugins((
+            LogicPlugin,
             EntitiesPlugin,
             EnvironmentPlugin
         ));

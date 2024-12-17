@@ -5,7 +5,7 @@ use bevy_atmosphere::prelude::{AtmosphereCamera, AtmospherePlugin};
 use bevy_rapier3d::prelude::{Collider, Damping, LockedAxes, RigidBody, Velocity};
 
 use bevy_third_person_camera::{Offset, ThirdPersonCamera, ThirdPersonCameraPlugin, ThirdPersonCameraTarget, Zoom};
-use crate::entities::player::{Grounded, Player, PlayerSkillAbleStats};
+use crate::entities::player::{Grounded, PlayerSkillAbleStats, PlayerStats};
 
 pub struct PlayerBasePlugin;
 
@@ -29,7 +29,7 @@ fn load_player_model(mut commands: Commands, asset_server: Res<AssetServer>) {
         SceneRoot(asset_server.load(GltfAssetLabel::Scene(0).from_asset("entities/player.glb"))),
         Transform::from_xyz(0.0, 0.0, 0.0),
         GlobalTransform::default(),
-        Player::default(),
+        PlayerStats::default(),
         PlayerSkillAbleStats::default(),
         ThirdPersonCameraTarget,
         RigidBody::Dynamic,

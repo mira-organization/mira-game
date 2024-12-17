@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_rapier3d::prelude::{QueryFilter, RapierContext, Real, Velocity};
-use crate::entities::player::{Grounded, Player, PlayerState};
+use crate::entities::player::{Grounded, PlayerState, PlayerStats};
 
 #[derive(Event)]
 pub enum InputAction {
@@ -27,8 +27,8 @@ impl Plugin for PlayerInputPlugin {
 
 fn fetch_keyboard_input(mut input_event_writer: EventWriter<InputAction>,
                         keyboard: Res<ButtonInput<KeyCode>>,
-                        camera_query: Query<&Transform, (With<Camera>, Without<Player>)>,
-                        mut player_query: Query<(&mut Player, &Grounded), With<Player>>,
+                        camera_query: Query<&Transform, (With<Camera>, Without<PlayerStats>)>,
+                        mut player_query: Query<(&mut PlayerStats, &Grounded), With<PlayerStats>>,
                         time: Res<Time>,
 ) {
     for (mut player, grounded) in player_query.iter_mut() {
@@ -115,7 +115,7 @@ fn fetch_keyboard_input(mut input_event_writer: EventWriter<InputAction>,
 
 fn update_movement(time: Res<Time>,
                    mut input_event_reader: EventReader<InputAction>,
-                   mut player_query: Query<(&mut Transform, &mut Velocity, &mut Player, &mut Grounded)>
+                   mut player_query: Query<(&mut Transform, &mut Velocity, &mut PlayerStats, &mut Grounded)>
 ) {
     for event in input_event_reader.read() {
         for (mut transform, mut velocity, mut player, mut grounded) in player_query.iter_mut() {
@@ -195,7 +195,7 @@ fn update_movement(time: Res<Time>,
     }
 }
 
-fn ground_check(mut player_query: Query<(&mut Transform, &mut Player, &mut Grounded), With<Player>>,
+fn ground_check(mut player_query: Query<(&mut Transform, &mut PlayerStats, &mut Grounded), With<PlayerStats>>,
                 rapier_context: Query<&RapierContext>
 ) {
     for (transform, mut player, mut grounded) in player_query.iter_mut() {

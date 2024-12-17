@@ -1,6 +1,7 @@
 mod manager;
 mod entities;
 mod environment;
+mod logic;
 
 use bevy::prelude::*;
 use bevy::render::render_resource::WgpuFeatures;
